@@ -1,0 +1,74 @@
+# GitHub Actions CI — follows the official Playwright CI guide:
+# https://playwright.dev/docs/ci-intro  and  https://playwright.dev/docs/test-sharding
+#
+# Two lanes that mirror the project split:
+#   - api  : backend = SUT. No browser, fast — gates backend PRs in seconds.
+#   - ui   : functional + e2e, sharded across runners for speed.
+#
+# Configure these repo secrets/vars before enabling: BASE_URL, API_URL,
+# TEST_USER_EMAIL, TEST_USER_PASSWORD. (Settings → Secrets and variables → Actions.)
+name: Playwright Tests
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+env:
+  ENVIRONMENT: ci
+  BASE_URL: ${{ vars.BASE_URL }}
+  API_URL: ${{ vars.API_URL }}
+  TEST_USER_EMAIL: ${{ secrets.TEST_USER_EMAIL }}
+  TEST_USER_PASSWORD: ${{ secrets.TEST_USER_PASSWORD }}
+
+jobs:
+  quality:
+    name: Lint & typecheck
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 20, cache: npm }
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run lint
+
+  api:
+    name: API tests (no browser)
+    runs-on: ubuntu-latest
+    needs: quality
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 20, cache: npm }
+      - run: npm ci
+      - run: npx playwright test --project=api
+      - uses: actions/upload-artifact@v4
+        if: ${{ !cancelled() }}
+        with:
+          name: api-report
+          path: playwright-report/
+          retention-days: 14
+
+  ui:
+    name: UI tests (shard ${{ matrix.shard }}/4)
+    runs-on: ubuntu-latest
+    needs: quality
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 20, cache: npm }
+      - run: npm ci
+      - run: npx playwright install --with-deps
+      - run: npx playwright test --project=functional --project=e2e --shard=${{ matrix.shard }}/4
+      - uses: actions/upload-artifact@v4
+        if: ${{ !cancelled() }}
+        with:
+          name: ui-report-${{ matrix.shard }}
+          path: playwright-report/
+          retention-days: 14

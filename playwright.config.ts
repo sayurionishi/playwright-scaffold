@@ -29,6 +29,9 @@ export default defineConfig({
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
     video: 'retain-on-failure',
+    /* getByTestId() resolves this attribute. Default is 'data-testid'; change here if your
+       app uses 'data-test'/'data-qa' etc. https://playwright.dev/docs/locators#locate-by-test-id */
+    testIdAttribute: 'data-testid',
     /* Fail fast: default action/navigation timeouts kept tight on purpose.
        If a test needs longer, it asks for it explicitly — see wait-strategy skill. */
     actionTimeout: 15_000,

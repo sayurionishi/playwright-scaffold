@@ -25,7 +25,7 @@ test.describe('Products', () => {
     await productsPage.goto();
   });
 
-  test('creates a product @smoke', async ({ productsPage, page }) => {
+  test('creates a product', { tag: '@smoke' }, async ({ productsPage, page }) => {
     await test.step('When I add a product', async () => {
       await productsPage.addProduct('Widget');
     });
@@ -40,12 +40,16 @@ test.describe('Products', () => {
 - `describe` per feature; `beforeEach` for shared arrange; `test.step` for Given/When/Then.
 - **Web-first assertions only.** No `waitForTimeout`, no `networkidle`.
 - Keep a test under ~50 lines and to **one behavior** (SRP). Descriptive names (`creates X when Y`, not `test1`).
+- For several independent checks in one test, use **soft assertions** (`expect.soft(...)`) so all failures report at once instead of stopping at the first. ([docs](https://playwright.dev/docs/test-assertions#soft-assertions))
 
 ## Tagging — exactly one per test
 
+Use the **structured tag option** (Playwright 1.42+) — `test('name', { tag: '@smoke' }, async …)` — not a tag baked into the title. It's the modern form and keeps titles clean. (A `@tag` in the title still works with `--grep`, but prefer the option.)
+
 `@smoke` (critical, fast) · `@sanity` · `@regression` (broad) · `@api` · `@e2e` · `@security` ·
 `@destructive` (mutates shared state — runs `--workers=1`, **wins** over any other tag, requires cleanup).
-Tag the `test`, never the `describe`. `npm run test:smoke` etc. filter by tag.
+Tag the `test`, never the `describe`. `npm run test:smoke` etc. filter by tag via `--grep`.
+([tag docs](https://playwright.dev/docs/test-annotations#tag-tests))
 
 ## Independence (parallel-safe)
 

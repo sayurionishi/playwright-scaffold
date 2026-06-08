@@ -7,7 +7,6 @@ import type { Locator } from '@playwright/test';
  * only flip their dirty/validation state on `blur`, not on every keystroke. If you
  * `fill()` and then immediately expect the Save button to enable, it can stay
  * disabled because the form never registered the change. Blur fixes it deterministically.
- * (Battle-tested SQA lesson.)
  *
  * Optionally verify the committed value to catch onChange races.
  */

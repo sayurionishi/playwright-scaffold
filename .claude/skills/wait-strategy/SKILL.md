@@ -24,7 +24,7 @@ On a chatty SPA — React with polling, and **especially Salesforce Lightning** 
 
 If you keep a `networkidle`, leave an inline comment saying _why this page goes quiet_. The `salesforce` profile treats it as effectively never acceptable.
 
-> The source guides disagreed (one banned it, one called it "acceptable but not preferred"). The truth is profile-dependent: harmful on SPAs, fine on static pages. Default to deterministic waits and reach for `networkidle` only when you can name why the page settles.
+> Opinions on `networkidle` differ (some ban it outright, some call it "acceptable but not preferred"). The truth is profile-dependent: harmful on SPAs, fine on static pages. Default to deterministic waits and reach for `networkidle` only when you can name why the page settles.
 
 ## The hierarchy — use the first that applies
 
@@ -50,8 +50,8 @@ await waitForRest(page, '/api/products');
 Concurrent requests → arm both, then `Promise.all`:
 
 ```ts
-const a = waitForRest(page, '/api/flowcell');
-const b = waitForGraphQL(page, 'UpdateCCEKit');
+const a = waitForRest(page, '/api/cart');
+const b = waitForGraphQL(page, 'UpdateCartTotals');
 await option.click();
 await Promise.all([a, b]);
 ```

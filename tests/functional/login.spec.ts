@@ -21,13 +21,13 @@ test.describe('Login', () => {
     await loginPage.goto();
   });
 
-  test('shows the sign-in form @smoke', async ({ loginPage }) => {
+  test('shows the sign-in form', { tag: '@smoke' }, async ({ loginPage }) => {
     await expect(loginPage.emailInput).toBeVisible();
     await expect(loginPage.passwordInput).toBeVisible();
     await expect(loginPage.signInButton).toBeEnabled();
   });
 
-  test('rejects invalid credentials @regression', async ({ loginPage, page }) => {
+  test('rejects invalid credentials', { tag: '@regression' }, async ({ loginPage, page }) => {
     await test.step('When I submit wrong credentials', async () => {
       await loginPage.login('wrong@example.com', 'badpassword');
     });

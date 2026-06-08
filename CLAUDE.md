@@ -4,9 +4,9 @@
 > index of skills. The deep rules live in `.claude/skills/<name>/SKILL.md`; this file routes you
 > there. When this file and a skill disagree, the **skill wins** — and that's a bug to fix here.
 
-You are working in an **AI-native Playwright + TypeScript scaffold** that fuses five battle-tested
-internal testing guides. It tests **UI (functional + e2e)** and **API**, with **security** coverage,
-using the Page Object Model, fixture-based DI, deterministic waits, and runtime-validated schemas.
+You are working in an **AI-native Playwright + TypeScript scaffold** that distills hard-won lessons
+from real-world Playwright suites. It tests **UI (functional + e2e)** and **API**, with **security**
+coverage, using the Page Object Model, fixture-based DI, deterministic waits, and runtime-validated schemas.
 
 ---
 

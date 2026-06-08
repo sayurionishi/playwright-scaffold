@@ -4,7 +4,7 @@
 # ── Byte-sensitive test fixtures MUST be byte-identical on every OS. ──
 # Windows git (core.autocrlf=true) rewrites LF→CRLF on checkout, which silently
 # breaks file-upload tests whose backend validator rejects CRLF. Lock fixtures
-# as binary so they are never transformed. (Battle-tested SQA lesson.)
+# as binary so they are never transformed. (A real-world flake that passes in CI, fails on Windows.)
 # Add every upload fixture here:
 test-data/files/**          -text
 *.csv                       -text

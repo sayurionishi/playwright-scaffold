@@ -27,8 +27,8 @@ import type { Page, Response } from '@playwright/test';
  *
  * For concurrent requests, arm both, then trigger, then Promise.all:
  *
- *   const a = waitForRest(page, '/api/flowcell');
- *   const b = waitForGraphQL(page, 'UpdateCCEKit');
+ *   const a = waitForRest(page, '/api/cart');
+ *   const b = waitForGraphQL(page, 'UpdateCartTotals');
  *   await option.click();
  *   await Promise.all([a, b]);
  * ─────────────────────────────────────────────────────────────────────────────

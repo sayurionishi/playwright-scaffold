@@ -1,0 +1,19 @@
+node_modules/
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/
+/.auth/
+
+# Local env files — never commit real credentials. Only *.example is tracked.
+env/.env.dev
+env/.env.staging
+env/.env.prod
+env/.env.ci
+env/.env.local
+.env
+
+# Editor / OS
+.DS_Store
+.idea/
+*.log

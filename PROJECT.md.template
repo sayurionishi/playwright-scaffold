@@ -1,0 +1,35 @@
+# PROJECT.md
+
+> Written by the `bootstrap` skill. Records the decisions that tailor this scaffold to THIS target.
+> These override the generic defaults in CLAUDE.md. Keep it current.
+
+## Target
+- **App / service name:** <name>
+- **What we test:** <UI | API | both>
+- **App type / profile:** <generic | controlled | salesforce | api-only>  → see `profiles/<profile>.md`
+- **Tech stack (under test):** <e.g. React SPA, Salesforce Lightning, FastAPI backend>
+
+## Locator strategy (active)
+<copy the priority from the chosen profile, e.g.:>
+`getByRole` → `getByLabel` → `getByPlaceholder` → `getByText` → `getByTestId`
+
+## Auth
+- **Model:** <none | username+password | SSO | token>
+- **Setup:** <`setup` project + auth.setup.ts kept | removed (no login)>
+
+## Environments
+| Env | BASE_URL | API_URL |
+|---|---|---|
+| dev | <url> | <url> |
+| staging | <url> | <url> |
+
+## API contract
+- **Source:** <OpenAPI/Swagger URL | none — live shapes captured & flagged>
+
+## Projects enabled
+<list the Playwright projects kept, e.g. api, setup, functional, e2e>
+
+## Target-specific facts (discovered during bootstrap/exploration)
+- <e.g. Visualforce pages run in iframes — use frameLocator>
+- <e.g. /aura polling makes networkidle useless — already banned>
+- <known flaky areas, rate limits, test-data gaps, etc.>

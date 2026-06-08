@@ -1,0 +1,63 @@
+{
+  "name": "playwright-scaffold",
+  "version": "1.0.0",
+  "description": "AI-native Playwright test automation scaffold — POM + API + security, with deterministic wait strategy and a Claude skills system.",
+  "type": "module",
+  "scripts": {
+    "test": "playwright test --grep-invert @destructive",
+    "test:api": "playwright test --project=api",
+    "test:functional": "playwright test --project=functional",
+    "test:e2e": "playwright test --project=e2e",
+    "test:smoke": "playwright test --grep @smoke",
+    "test:sanity": "playwright test --grep @sanity",
+    "test:regression": "playwright test --grep @regression",
+    "test:security": "playwright test --project=api --grep @security",
+    "test:destructive": "playwright test --grep @destructive --workers=1",
+    "test:ui": "playwright test --ui",
+    "test:debug": "playwright test --debug",
+    "test:headed": "playwright test --project=functional --headed",
+    "test:ci": "cross-env ENVIRONMENT=ci CI=1 playwright test --workers=1 --retries=0",
+    "report": "playwright show-report",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write .",
+    "typecheck": "tsc --noEmit",
+    "prepare": "husky"
+  },
+  "keywords": [
+    "playwright",
+    "typescript",
+    "test-automation",
+    "pom",
+    "zod",
+    "ai-assisted"
+  ],
+  "license": "MIT",
+  "devDependencies": {
+    "@eslint/js": "^9.17.0",
+    "@playwright/test": "^1.49.1",
+    "@types/node": "^22.10.5",
+    "cross-env": "^7.0.3",
+    "eslint": "^9.17.0",
+    "eslint-plugin-playwright": "^2.1.0",
+    "husky": "^9.1.7",
+    "lint-staged": "^15.3.0",
+    "prettier": "^3.4.2",
+    "typescript": "^5.7.3",
+    "typescript-eslint": "^8.19.1"
+  },
+  "dependencies": {
+    "@faker-js/faker": "^9.3.0",
+    "dotenv": "^16.4.7",
+    "zod": "^3.24.1"
+  },
+  "lint-staged": {
+    "*.{ts,mts}": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "*.{json,md}": [
+      "prettier --write"
+    ]
+  }
+}

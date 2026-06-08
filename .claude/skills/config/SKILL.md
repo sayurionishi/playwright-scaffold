@@ -26,6 +26,7 @@ ENVIRONMENT=staging npx playwright test     # loads env/.env.staging
 
 ## Rules
 
+- **`BASE_URL` is the app ROOT only** — never bake in a path (e.g. `.../todomvc`), or a `goto('/')` drops it. Path segments belong in `enums/util/routes.ts`; navigate to them.
 - Add new vars to **`env/.env.<env>.example`** (and your real env file) so the contract is documented.
 - Read via `appConfig.*` (which reads `process.env.*` with `??` fallback or the `required()` guard).
   Never `process.env.X as string`.

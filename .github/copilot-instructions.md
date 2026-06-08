@@ -8,11 +8,25 @@ This is an AI-native Playwright + TypeScript test scaffold. It tests **UI (funct
 **API**, with **security** coverage, via Page Object Model, fixture DI, deterministic waits, and
 runtime-validated Zod schemas.
 
-## First contact
+## First contact — bootstrap a fresh clone
 
-If `PROJECT.md` does not exist, this is a fresh clone — the user must run the bootstrap step first
-(it picks a profile and tailors the scaffold). If `PROJECT.md` exists, read it: it records the
-profile, auth model, locator priority, and API-contract source, and overrides the defaults below.
+If `PROJECT.md` exists, read it: it records the profile, auth model, locator priority, and
+API-contract source, and overrides the defaults below.
+
+If `PROJECT.md` does NOT exist, this is a fresh clone — **bootstrap it first**, don't generate tests yet:
+
+1. **Interview** the user (don't decide silently): UI / API / both? App type → profile (`generic` /
+   `controlled` / `salesforce` / `api-only`)? Auth (none / password / SSO)? OpenAPI spec? Base URL?
+2. **API-only gate:** a large pure-API suite on a non-TS backend → recommend a backend-native tool
+   (pytest+Pydantic, RestAssured, Schemathesis) and stop.
+3. **Apply the profile:** set locator priority (per profile); in `playwright.config.ts` remove unused
+   projects (no auth → delete the `setup` project + its `dependencies` + `storageState` + `auth.setup.ts`;
+   no backend → remove `api`); fill `env/.env.<env>`.
+4. **`BASE_URL` is the app ROOT only** — no path segment (not `.../todomvc`), else `goto('/')` drops it.
+   Paths go in `enums/util/routes.ts`.
+5. **Example files — ASK, don't decide:** delete them, or keep as reference. If kept, MOVE the example
+   specs (`tests/**/*.spec.ts`) out of `tests/` — they target a fake app and will run and FAIL otherwise.
+6. **Write `PROJECT.md`** recording every decision.
 
 ## Hard stops (refuse to generate these)
 

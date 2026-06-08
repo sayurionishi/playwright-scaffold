@@ -36,8 +36,9 @@ Read the chosen profile file; it specifies locator priority, wait notes, and aut
   - api-only → delete `setup`, `functional`, `e2e`; keep `api`.
   - UI-only → keep `setup`/`functional`/`e2e`; you may keep `api` for setup/teardown.
   - no auth → delete the `setup` project + its `dependencies`, and delete `helpers/auth/auth.setup.ts`, and drop `storageState` from UI projects.
-- **Env:** create `env/.env.<env>` from the example; fill `BASE_URL`/`API_URL`/creds.
+- **Env:** create `env/.env.<env>` from the example; fill `BASE_URL`/`API_URL`/creds. **`BASE_URL` is the app ROOT** (e.g. `https://demo.playwright.dev`) — do NOT bake a path segment into it (e.g. `.../todomvc`), or a `goto('/')` will drop the path. Put path segments in `enums/util/routes.ts` and navigate to them.
 - **Enums/config:** replace the example endpoints/routes/messages with the target's real ones (verify live / against OpenAPI — don't guess).
+- **Example files — ASK the user, don't decide silently:** the scaffold ships example page objects + specs. Ask whether to **(a) delete** them or **(b) keep them as reference**. If kept, the example **specs** (`tests/**/*.spec.ts` — `login`, `users`, `users.security`, `user-journey`) MUST be moved out of `tests/` (e.g. to an `examples/` folder) — they target a fake app and **will run and FAIL** if left in a test project. Example page objects/components are harmless to keep.
 
 ## Phase 5 — Write PROJECT.md
 
@@ -54,5 +55,5 @@ Point the user at the first real task (usually a page object via `page-objects`,
 ## Don't
 
 - Don't generate tests before `PROJECT.md` exists.
-- Don't keep example files (`login.page.ts`, `users.spec.ts`, etc.) as-is — they're references; replace or delete once real ones exist.
+- Don't silently delete OR silently keep the example files — **ask** (see Phase 4). If the user keeps them, move the example specs out of `tests/` so they don't run and fail against the real app.
 - Don't pick a profile for the user silently — confirm the app type first.

@@ -5,8 +5,13 @@
 #   - api  : backend = SUT. No browser, fast — gates backend PRs in seconds.
 #   - ui   : functional + e2e, sharded across runners for speed.
 #
-# Configure these repo secrets/vars before enabling: BASE_URL, API_URL,
-# TEST_USER_EMAIL, TEST_USER_PASSWORD. (Settings → Secrets and variables → Actions.)
+# BASE_URL is the address of the APP UNDER TEST — the site/API you point the tests at.
+# The bare scaffold has no app, so the test jobs below AUTO-SKIP until you set a `BASE_URL`
+# repo *variable*. Lint/typecheck always runs (no app needed), so CI stays green on a fresh clone.
+#
+# To enable the test lanes for your app (Settings → Secrets and variables → Actions):
+#   • Variables: BASE_URL, API_URL
+#   • Secrets:   TEST_USER_EMAIL, TEST_USER_PASSWORD
 name: Playwright Tests
 
 on:
@@ -38,6 +43,7 @@ jobs:
     name: API tests (no browser)
     runs-on: ubuntu-latest
     needs: quality
+    if: ${{ vars.BASE_URL != '' }} # auto-skips until you configure the app URL
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -55,6 +61,7 @@ jobs:
     name: UI tests (shard ${{ matrix.shard }}/4)
     runs-on: ubuntu-latest
     needs: quality
+    if: ${{ vars.BASE_URL != '' }} # auto-skips until you configure the app URL
     strategy:
       fail-fast: false
       matrix:

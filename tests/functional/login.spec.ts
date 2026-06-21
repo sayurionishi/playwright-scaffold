@@ -7,7 +7,8 @@ import { UiMessages } from '../../enums/util/ui-messages';
  * Conventions on show:
  *  - import { test, expect } from the single fixtures entry point (never @playwright/test)
  *  - exactly ONE tag per test (@smoke | @sanity | @regression); @destructive always wins
- *  - Given/When/Then via test.step for readable reports
+ *  - Given/When/Then via test.step for readable reports (BDD variant; the api specs use the
+ *    AAA variant — both are fine, same three-beat shape, see the test-standards skill)
  *  - assertions live HERE, never in the page object
  *  - web-first assertions only (no waitForTimeout, no networkidle)
  *

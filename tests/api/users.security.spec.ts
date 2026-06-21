@@ -16,12 +16,16 @@ test.describe('POST /users — input fuzzing', () => {
       `rejects malicious email: ${payload.slice(0, 24)}`,
       { tag: '@security' },
       async ({ api }) => {
-        const { status, body } = await api.post(ApiEndpoints.USERS, {
-          data: { email: payload, firstName: 'A', lastName: 'B', password: 'Password123!' },
+        const { status, body } = await test.step('Act: submit the malicious email', async () =>
+          api.post(ApiEndpoints.USERS, {
+            data: { email: payload, firstName: 'A', lastName: 'B', password: 'Password123!' },
+          }));
+
+        await test.step('Assert: rejected 4xx, not reflected, no 500', async () => {
+          expect(status, 'malicious input must be rejected with 4xx').toBeGreaterThanOrEqual(400);
+          expect(status).toBeLessThan(500); // a 500 means the payload reached an unguarded code path
+          expect(JSON.stringify(body)).not.toContain('<script>'); // never reflected verbatim
         });
-        expect(status, 'malicious input must be rejected with 4xx').toBeGreaterThanOrEqual(400);
-        expect(status).toBeLessThan(500); // a 500 means the payload reached an unguarded code path
-        expect(JSON.stringify(body)).not.toContain('<script>'); // never reflected verbatim
       },
     );
   }
@@ -30,9 +34,13 @@ test.describe('POST /users — input fuzzing', () => {
 test.describe('GET /users/:id — path param fuzzing', () => {
   for (const badId of [...INVALID_IDS, ...SECURITY_PAYLOADS.pathTraversal]) {
     test(`rejects malformed id: ${badId.slice(0, 24)}`, { tag: '@security' }, async ({ api }) => {
-      const { status } = await api.get(buildPath(ApiEndpoints.USER_BY_ID, { id: badId }));
-      expect(status).toBeGreaterThanOrEqual(400);
-      expect(status).toBeLessThan(500);
+      const { status } = await test.step('Act: request the malformed id', async () =>
+        api.get(buildPath(ApiEndpoints.USER_BY_ID, { id: badId })));
+
+      await test.step('Assert: rejected 4xx, no 500', async () => {
+        expect(status).toBeGreaterThanOrEqual(400);
+        expect(status).toBeLessThan(500);
+      });
     });
   }
 });

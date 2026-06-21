@@ -37,7 +37,30 @@ test.describe('Products', () => {
 ```
 
 - Import from `fixtures/test-options` only.
-- `describe` per feature; `beforeEach` for shared arrange; `test.step` for Given/When/Then.
+- `describe` per feature; `beforeEach` for shared arrange; `test.step` to label the beats.
+
+### AAA or Given/When/Then — both fine
+
+`test.step` labels are for the human reading the report. Use **either** vocabulary — they are the
+same three-beat shape, so pick whichever reads better and **stay consistent within a file**:
+
+| Arrange | Act  | Assert | ← AAA (the api specs use this) |
+| ------- | ---- | ------ | ------------------------------ |
+| Given   | When | Then   | ← BDD (the UI specs use this)  |
+
+```ts
+// AAA
+await test.step('Act: create the user', async () => { … });
+await test.step('Assert: 201 and body matches the contract', async () => { … });
+
+// BDD
+await test.step('When I submit wrong credentials', async () => { … });
+await test.step('Then I see an error and stay on /login', async () => { … });
+```
+
+- Steps are **optional**. Use them when a test has distinct beats worth labeling; **skip them on
+  single-action tests** (a one-line GET + status check reads fine without a wrapper) — don't pad.
+- The `Act` step can `return` the call's result so the `Assert` step uses it (see `tests/api/users.spec.ts`).
 - **Web-first assertions only.** No `waitForTimeout`, no `networkidle`.
 - Keep a test under ~50 lines and to **one behavior** (SRP). Descriptive names (`creates X when Y`, not `test1`).
 - For several independent checks in one test, use **soft assertions** (`expect.soft(...)`) so all failures report at once instead of stopping at the first. ([docs](https://playwright.dev/docs/test-assertions#soft-assertions))

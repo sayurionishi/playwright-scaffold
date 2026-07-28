@@ -6,7 +6,6 @@
  * about that screen. One composite/tree call does it in ~200 ms, deterministically.
  */
 
-import { expect } from '@playwright/test';
 import type { ApiRequest } from '../../fixtures/api/api-request';
 import { salesforceConfig } from '../../config/salesforce.config';
 import { SalesforceApi, soqlUrl } from '../../enums/salesforce/salesforce-api';
@@ -112,7 +111,14 @@ export async function createTree(
     schema: CompositeTreeResponseSchema,
     expectStatus: 200,
   });
-  expect(data.hasErrors, `composite/tree errors: ${JSON.stringify(data.results)}`).toBe(false);
+  // Throws rather than `expect`, so this helper also works outside a test (scripts, fixtures,
+  // global setup). `expect` outside a test context throws a confusing Playwright internal error.
+  if (data.hasErrors) {
+    throw new Error(
+      `composite/tree reported errors creating ${rootObjectApiName}. The outer HTTP status was 200 — ` +
+        `Salesforce reports per-record failures in the body:\n${JSON.stringify(data.results, null, 2)}`,
+    );
+  }
   return data;
 }
 

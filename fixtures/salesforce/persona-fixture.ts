@@ -1,3 +1,4 @@
+import fs from 'node:fs';
 import { test as base, type BrowserContext, type Page } from '@playwright/test';
 import { salesforceConfig } from '../../config/salesforce.config';
 import { LightningRecordPage } from '../../pages/salesforce/lightning-record.page';
@@ -37,9 +38,26 @@ export const test = base.extend<PersonaFixtures>({
     const opened: BrowserContext[] = [];
 
     await use(async (personaKey: string) => {
-      const context = await browser.newContext({
-        storageState: salesforceConfig.storageStateFor(personaKey),
-      });
+      const statePath = salesforceConfig.storageStateFor(personaKey);
+
+      /**
+       * Guard with a real message. Without this, a missing state file surfaces as a raw ENOENT from
+       * deep inside Playwright, which reads like a bug in the framework rather than "you ran this
+       * from a project that doesn't depend on setup:salesforce" — the actual, common cause (e.g.
+       * calling `asPersona` from the browserless `org` project).
+       */
+      if (!fs.existsSync(statePath)) {
+        throw new Error(
+          `No stored session for persona "${personaKey}" at ${statePath}.\n` +
+            '  • Run the setup project first: npx playwright test --project=setup:salesforce\n' +
+            `  • Check "${personaKey}" exists in personas.ts and is uiCapable (API-only personas get ` +
+            'no browser state by design)\n' +
+            '  • Check the calling project declares dependencies: ["setup:salesforce"] — the `org` ' +
+            'project deliberately does not, so use `orgAs` there instead of `asPersona`.',
+        );
+      }
+
+      const context = await browser.newContext({ storageState: statePath });
       opened.push(context);
       const page = await context.newPage();
       return {

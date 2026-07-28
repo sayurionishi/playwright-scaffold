@@ -45,6 +45,31 @@ export interface SalesforceOrgFixtures {
   subjectPersona: Persona;
 }
 
+/** Emit the privileged-subject warning once per process, not once per test. */
+let privilegedSubjectWarned = false;
+
+/**
+ * Warn when the SUBJECT persona is privileged.
+ *
+ * `orgAs()` throws for a privileged persona, but the `org`/`page` path can't: someone may
+ * legitimately be running a single-identity local setup, or deliberately testing the admin's own
+ * screen. So this warns rather than blocks — but it MUST warn, because a privileged subject silently
+ * voids every assertion made with it (Modify All Data bypasses sharing and FLS), and the suite still
+ * goes green. A silent pass is the one outcome worse than a failure.
+ */
+function warnIfSubjectIsPrivileged(): void {
+  if (privilegedSubjectWarned) return;
+  const subject = lookupPersona(salesforceConfig.defaultPersona);
+  if (!subject.privileged) return;
+  privilegedSubjectWarned = true;
+  console.warn(
+    `⚠️  SF_DEFAULT_PERSONA="${subject.key}" is PRIVILEGED. Every assertion made with \`org\` or the ` +
+      'UI `page` now runs with Modify All Data, which bypasses sharing AND field-level security — ' +
+      'so permission tests will pass no matter how broken the org is, and UI tests exercise a screen ' +
+      'no real user sees. Set SF_DEFAULT_PERSONA to a restricted persona (e.g. standardUser).',
+  );
+}
+
 function lookupPersona(personaKey: string): Persona {
   const found = Object.values(Personas).find((p) => p.key === personaKey);
   if (found === undefined) {
@@ -61,10 +86,12 @@ export const test = base.extend<SalesforceOrgFixtures>({
   // a fixture's dependencies, and rejects a plain parameter name. `no-empty-pattern` is disabled
   // for fixtures/** in eslint.config.mjs for exactly this reason.
   orgSession: async ({}, use) => {
+    warnIfSubjectIsPrivileged();
     await use(await getOrgSession(salesforceConfig.defaultPersona));
   },
 
   subjectPersona: async ({}, use) => {
+    warnIfSubjectIsPrivileged();
     await use(lookupPersona(salesforceConfig.defaultPersona));
   },
 

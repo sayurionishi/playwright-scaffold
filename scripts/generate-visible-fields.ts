@@ -27,6 +27,7 @@ import { ApiRequest } from '../fixtures/api/api-request';
 import { getOrgSession, authHeaders } from '../helpers/salesforce/auth';
 import { fetchObjectInfo, visibleFieldNames } from '../helpers/salesforce/describe';
 import { ASSERTABLE_PERSONAS } from '../test-data/salesforce/personas';
+import { salesforceConfig } from '../config/salesforce.config';
 
 const ENVIRONMENT = process.env.ENVIRONMENT ?? 'dev';
 dotenv.config({ path: path.resolve(process.cwd(), `env/.env.${ENVIRONMENT}`) });
@@ -51,6 +52,23 @@ async function main(): Promise<void> {
     console.error(
       'Usage: npm run sf:visible-fields -- <Object> [<Object>...]\n' +
         'Example: npm run sf:visible-fields -- Account Opportunity',
+    );
+    process.exit(1);
+  }
+
+  /**
+   * Require `jwt` up front rather than failing per persona.
+   *
+   * This script reads object-info once PER PERSONA, so it needs genuinely distinct identities. Under
+   * `sfdx` (one CLI session) every non-admin persona would throw, get swallowed by the per-persona
+   * catch below, and be printed as `// <persona>: no access` — a CONFIG failure rendered as a
+   * PERMISSION result. Someone would then commit those empty sets as the contract.
+   */
+  if (salesforceConfig.authStrategy !== 'jwt') {
+    console.error(
+      `SF_AUTH_STRATEGY is "${salesforceConfig.authStrategy}", but per-persona visible-field sets ` +
+        'need distinct org users. Set SF_AUTH_STRATEGY=jwt and re-run — otherwise every persona ' +
+        'would report "no access" and you would commit an empty contract.',
     );
     process.exit(1);
   }

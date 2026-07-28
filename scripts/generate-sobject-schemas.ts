@@ -176,7 +176,14 @@ async function main(): Promise<void> {
     process.exit(1);
   }
 
-  const session = await getOrgSession();
+  /**
+   * ADMIN persona, deliberately — not the default/subject persona.
+   *
+   * `describe` read as a restricted user OMITS fields that user cannot see. Generating the schema
+   * as the subject would bake an FLS-filtered view in as "the contract": the snapshot would be
+   * silently incomplete, and it would never match `field-contract.spec.ts`, which reads as admin.
+   */
+  const session = await getOrgSession(salesforceConfig.adminPersona);
   const context = await playwrightRequest.newContext({
     baseURL: session.instanceUrl,
     extraHTTPHeaders: authHeaders(session),

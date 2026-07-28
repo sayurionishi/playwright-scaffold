@@ -1,9 +1,15 @@
 # GitHub Actions CI — follows the official Playwright CI guide:
 # https://playwright.dev/docs/ci-intro  and  https://playwright.dev/docs/test-sharding
 #
-# Two lanes that mirror the project split:
-#   - api  : backend = SUT. No browser, fast — gates backend PRs in seconds.
-#   - ui   : functional + e2e, sharded across runners for speed.
+# Lanes mirror the project split:
+#   - api                  : backend = SUT. No browser, fast — gates backend PRs in seconds.
+#   - salesforce-contract  : org metadata + permission model. No browser. Auto-skips unless
+#                            SF_LOGIN_URL is set. Cheap enough to gate every push.
+#   - ui                   : functional + e2e, sharded across runners for speed.
+#
+# The Salesforce UI lane is deliberately NOT here: it needs one org user per persona and a browser,
+# so it belongs on a nightly/pre-release schedule rather than every push. Add it with
+# `--project=salesforce` once the persona users exist. See docs/salesforce/TEST-ARCHITECTURE.md §6.
 #
 # BASE_URL is the address of the APP UNDER TEST — the site/API you point the tests at.
 # The bare scaffold has no app, so the test jobs below AUTO-SKIP until you set a `BASE_URL`
@@ -54,6 +60,55 @@ jobs:
         if: ${{ !cancelled() }}
         with:
           name: api-report
+          path: playwright-report/
+          retention-days: 14
+
+  # ── Salesforce contract layer (no browser) ───────────────────────────────────────────────────
+  # Auto-skips unless SF_LOGIN_URL is set, so non-Salesforce clones are unaffected.
+  #
+  # This lane is deliberately separate and browser-free: it asserts field types, lengths, picklist
+  # values, permission-set grants, object CRUD, and per-persona FLS in seconds. It catches the change
+  # that no UI test can catch cheaply — an admin editing metadata, which happens with no deploy, no
+  # PR, and no notification. Cheap enough to gate every push.
+  #
+  # To enable (Settings → Secrets and variables → Actions):
+  #   • Variables: SF_LOGIN_URL, SF_API_VERSION, SF_ADMIN_PERSONA, SF_DEFAULT_PERSONA
+  #   • Secrets:   SF_CLIENT_ID, SF_JWT_PRIVATE_KEY, and one SF_USERNAME_<PERSONA> per persona
+  salesforce-contract:
+    name: Salesforce contract (no browser)
+    runs-on: ubuntu-latest
+    needs: quality
+    if: ${{ vars.SF_LOGIN_URL != '' }}
+    env:
+      # jwt is the only strategy that can represent distinct personas — the sf CLI holds one session.
+      SF_AUTH_STRATEGY: jwt
+      SF_LOGIN_URL: ${{ vars.SF_LOGIN_URL }}
+      SF_API_VERSION: ${{ vars.SF_API_VERSION }}
+      SF_ADMIN_PERSONA: ${{ vars.SF_ADMIN_PERSONA }}
+      SF_DEFAULT_PERSONA: ${{ vars.SF_DEFAULT_PERSONA }}
+      SF_USERNAME_SUFFIX: ${{ vars.SF_USERNAME_SUFFIX }}
+      SF_CLIENT_ID: ${{ secrets.SF_CLIENT_ID }}
+      SF_JWT_PRIVATE_KEY: ${{ secrets.SF_JWT_PRIVATE_KEY }}
+      SF_USERNAME_SYS_ADMIN: ${{ secrets.SF_USERNAME_SYS_ADMIN }}
+      SF_USERNAME_FULL_ACCESS: ${{ secrets.SF_USERNAME_FULL_ACCESS }}
+      SF_USERNAME_STANDARD_USER: ${{ secrets.SF_USERNAME_STANDARD_USER }}
+      SF_USERNAME_LIMITED_FIELDS: ${{ secrets.SF_USERNAME_LIMITED_FIELDS }}
+      SF_USERNAME_READ_ONLY: ${{ secrets.SF_USERNAME_READ_ONLY }}
+      SF_USERNAME_NO_ACCESS: ${{ secrets.SF_USERNAME_NO_ACCESS }}
+      SF_USERNAME_MANAGER: ${{ secrets.SF_USERNAME_MANAGER }}
+      SF_USERNAME_SUBORDINATE: ${{ secrets.SF_USERNAME_SUBORDINATE }}
+      SF_USERNAME_INTEGRATION_USER: ${{ secrets.SF_USERNAME_INTEGRATION_USER }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 20, cache: npm }
+      - run: npm ci
+      # No `playwright install` — the org project runs no browser. That's the point.
+      - run: npx playwright test --project=org
+      - uses: actions/upload-artifact@v4
+        if: ${{ !cancelled() }}
+        with:
+          name: salesforce-contract-report
           path: playwright-report/
           retention-days: 14
 

@@ -68,6 +68,75 @@ Controlled-form components (React Hook Form, Formik, Lightning inputs) often onl
 
 `page.locator('.loader')` matches **zero** elements when the class is hashed (`loader__a1b2c`), and `toBeHidden()` on zero elements passes **trivially** — a false green. Use `[class*="loader"]` (partial) or, better, a `data-testid`. `BasePage.waitForHidden` already calls `.first()`.
 
+## The timeout budget — fail fast, and fail DIAGNOSABLY
+
+Playwright's `actionTimeout` defaults to **0: no timeout at all**. So an un-clickable element does not
+fail on its own — it spins until the whole TEST times out, and you get:
+
+```
+Test timeout of 30000ms exceeded.        ← tells you nothing
+```
+
+With `actionTimeout` set (`playwright.config.ts`), the same failure reports:
+
+```
+locator.click: Timeout 10000ms exceeded.
+  waiting for locator('button[name="Save"]')
+    - locator resolved to <button disabled>…</button>
+    - element is not enabled              ← names the element AND the failed check
+```
+
+That's the real reason to bound it. Speed is the bonus; **diagnosability is the point.**
+
+### What `click()` is actually waiting for (actionability)
+
+1. attached to the DOM
+2. visible
+3. stable (not animating)
+4. **receives pointer events** — not covered by another element
+5. enabled
+
+**#4 is what hangs in practice.** The element is right there and visible, but permanently under a
+toast, a modal backdrop, a sticky header, or a spinner overlay that never cleared. Playwright retries
+silently and only tells you at timeout. If a click times out on a visible, enabled element, suspect an
+overlay first — and fix the missing wait, not the timeout.
+
+### The ordering invariant
+
+```
+actionTimeout  <  expect.timeout × (a few retries)  <  test timeout
+```
+
+If `actionTimeout` ≥ the test timeout it can never fire, and you're back to the useless generic
+message. Keep a wide gap so the specific error always wins the race.
+
+### Current budget
+
+| Setting             | Generic        | Salesforce | Why                                                |
+| ------------------- | -------------- | ---------- | -------------------------------------------------- |
+| `actionTimeout`     | 10s            | 15s        | one interaction; longer means something is wrong   |
+| `navigationTimeout` | 20s            | 30s        | page loads legitimately exceed a click             |
+| `expect.timeout`    | 7s             | 7s         | per web-first assertion, and they retry            |
+| test timeout        | 45s (e2e 120s) | 90s        | above action+navigation so the specific error wins |
+| `globalTimeout`     | 30 min (CI)    | —          | one hung worker must not burn the CI allowance     |
+
+Lightning gets more headroom because Aura hydration and the record-page bootstrap are genuinely slow.
+That's a fact about the platform, not a concession — squeezing it produces false failures, which
+teaches people to ignore timeouts.
+
+Note the e2e row: the TEST budget grows, the per-ACTION budget does not. A single click should never
+take longer in a journey than in a functional test; only the number of clicks changes.
+
+### Needing more time is a local decision, never a global one
+
+Raising a global timeout to green a red test is Constitution #13 — silencing a failure. If one test is
+legitimately slow, say so at that test:
+
+```ts
+test.slow(); // triples this test's timeout — built in, for known-slow tests
+test.setTimeout(120_000); // explicit; requires a comment justifying it
+```
+
 ## When waitForTimeout is _grudgingly_ acceptable
 
 Only for a non-network animation with no DOM/network signal, with a `// TODO` and a tracking ticket. Treat as a smell.
@@ -80,3 +149,4 @@ Only for a non-network animation with no DOM/network signal, with a `// TODO` an
 - [ ] Screen-readiness uses a web-first assertion, not a sleep.
 - [ ] Loader waits use partial-match or testid + `.first()`.
 - [ ] Save-after-fill flows blur to commit the dirty flag.
+- [ ] No timeout was RAISED to make a failure go away (#13). Slow-by-nature tests use `test.slow()`.

@@ -34,6 +34,9 @@ export interface OrgSession {
 /** Cache sessions per persona so a 4-project run mints one token per persona, not one per test. */
 const sessionCache = new Map<string, OrgSession>();
 
+/** Emit the sfdx single-identity warning once per process, not once per fixture. */
+let sfdxCollapseWarned = false;
+
 function base64url(input: Buffer | string): string {
   return Buffer.from(input)
     .toString('base64')
@@ -120,16 +123,35 @@ async function authenticateJwt(personaKey: string): Promise<OrgSession> {
 }
 
 /**
- * Reuse a session the `sf` CLI already holds. Local-dev convenience — assumes the developer is
- * authenticated to the org and does NOT support per-persona users (the CLI holds one session per
- * alias). Requesting a non-default persona under this strategy is an error, not a silent fallback.
+ * Reuse a session the `sf` CLI already holds. Local-dev convenience.
+ *
+ * SINGLE IDENTITY: the CLI holds one session per alias, so this strategy cannot represent distinct
+ * personas. It serves the admin and subject keys (both mapping to that one session, with a loud
+ * warning) and refuses everything else, because a permission matrix built on one identity would be
+ * green and meaningless.
  */
 async function authenticateSfdx(personaKey: string): Promise<OrgSession> {
-  if (personaKey !== salesforceConfig.defaultPersona) {
+  const adminKey = salesforceConfig.adminPersona;
+  const subjectKey = salesforceConfig.defaultPersona;
+
+  // The CLI holds exactly ONE session, so only the two identities the fixtures need can be served,
+  // and they both resolve to that same session (see the warning below). Any OTHER persona is a
+  // permission-matrix request, which is meaningless without distinct users — so it fails loudly.
+  if (personaKey !== adminKey && personaKey !== subjectKey) {
     throw new Error(
-      `The "sfdx" strategy can only provide the default persona ("${salesforceConfig.defaultPersona}"), ` +
-        `but "${personaKey}" was requested. Persona tests need SF_AUTH_STRATEGY=jwt so each persona ` +
-        'can authenticate as its own user. See the `salesforce-auth` skill.',
+      `The "sfdx" strategy holds a single CLI session, so it can only serve "${adminKey}" (admin) or ` +
+        `"${subjectKey}" (subject) — "${personaKey}" was requested. A persona matrix needs distinct ` +
+        'org users, so set SF_AUTH_STRATEGY=jwt for permission testing. See `salesforce-auth`.',
+    );
+  }
+
+  if (adminKey !== subjectKey && !sfdxCollapseWarned) {
+    sfdxCollapseWarned = true;
+    console.warn(
+      `⚠️  SF_AUTH_STRATEGY=sfdx: the admin ("${adminKey}") and subject ("${subjectKey}") identities ` +
+        'both resolve to the ONE session the sf CLI holds. The identity split is therefore NOT ' +
+        'exercised locally — a green UI run here does not prove the subject persona can do the ' +
+        'thing. Run the contract and persona suites against a jwt-configured org.',
     );
   }
   const { stdout } = await execFileAsync('sf', [

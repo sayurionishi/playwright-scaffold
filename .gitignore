@@ -11,7 +11,12 @@ env/.env.staging
 env/.env.prod
 env/.env.ci
 env/.env.local
+env/.env.salesforce
 .env
+
+# Salesforce JWT signing material. A leaked key mints sessions for every test persona.
+*.key
+server.crt
 
 # Editor / OS
 .DS_Store

@@ -42,10 +42,19 @@ contain the fallback text as a child, causing a strict-mode collision.
 
 ## Salesforce / Lightning notes (`salesforce` profile)
 
-- Lightning DOM ids and classes are **hashed and unstable** — never select on them (same trap as CSS-modules).
-- Prefer `getByRole`/`getByLabel`/stable text. Add `data-testid` only where you control the component.
-- Iframes (Visualforce, classic): use `page.frameLocator(...)`.
-- Shadow DOM: Playwright pierces open shadow roots automatically for role/text engines — prefer those over CSS.
+> **Load `salesforce-locators` instead of this section** for any real Salesforce work — it carries the
+> full Lightning cookbook (combobox, datatable, modal, toast, record fields) and the strict-mode traps.
+> The summary below is only enough to recognize that you need it.
+
+- Lightning ids are **regenerated per render** (`input-42`) and `slds-*` classes are a design system, not
+  an API — never select on either.
+- Prefer `getByRole`/`getByLabel`/stable text. `getByTestId` is LAST on this profile: you can't add
+  `data-testid` to a standard Lightning component (only to a custom LWC you own).
+- Iframes (Visualforce, Classic): `page.frameLocator(...)`, selected by `title`/`name`, never by index.
+- Shadow DOM: Lightning defaults to **synthetic** shadow, not native, so automatic piercing behaves
+  differently than you'd expect. Role/label engines work in both — rely on those.
+- The classic Salesforce strict-mode trap: the highlights panel duplicates detail-panel field values, so a
+  bare `getByText('Acme Corp')` matches twice. Scope by region — don't reach for `.first()`.
 
 ## Adding a testId to a controllable component
 

@@ -25,6 +25,16 @@ export default tseslint.config(
     },
   },
   {
+    /* Fixture files must use `async ({}, use) => …` for a fixture with no dependencies.
+       Playwright INSPECTS the destructuring pattern to resolve a fixture's dependency graph and
+       rejects a plain parameter name outright ("First argument must use the object destructuring
+       pattern"). So the empty pattern is load-bearing, not a style slip. */
+    files: ['fixtures/**/*.ts'],
+    rules: {
+      'no-empty-pattern': 'off',
+    },
+  },
+  {
     /* Playwright-specific rules apply to spec files only. */
     files: ['tests/**/*.spec.ts'],
     ...playwright.configs['flat/recommended'],

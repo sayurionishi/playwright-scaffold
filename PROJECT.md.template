@@ -33,3 +33,43 @@
 - <e.g. Visualforce pages run in iframes — use frameLocator>
 - <e.g. /aura polling makes networkidle useless — already banned>
 - <known flaky areas, rate limits, test-data gaps, etc.>
+
+---
+
+## Salesforce (delete this whole section if the profile is not `salesforce`)
+
+> Fill this in during `bootstrap` Phase 3b, and record the answers from
+> `docs/salesforce/VERIFY-BEFORE-FIRST-RUN.md` here so nobody rediscovers them.
+
+### Org
+- **Type:** <scratch | Developer | Partial sandbox | Full sandbox | production (why?)>
+- **Lightning host (BASE_URL):** <https://...lightning.force.com>
+- **My Domain / sandbox name:** <name>  → `SF_USERNAME_SUFFIX` = <suffix>
+- **Pinned API version:** <vXX.0>  (asserted by `npm run test:contract`)
+
+### Auth
+- **Strategy:** <jwt | sfdx | password>
+- **Connected App:** <name> — assigned to <profiles/permsets>
+- **Session injection that works here:** <cookie (`applySession`) | frontdoor.jsp>
+- **"Lock sessions to IP" setting:** <on | off>  ← breaks injection when on and IPs differ
+
+### Personas
+| Key | Profile | Permission sets | Env var |
+|---|---|---|---|
+| <salesRep> | <Sales User> | <> | SF_USERNAME_SALES_REP |
+
+### Objects under contract
+<objects passed to `npm run sf:schemas`, and where the committed snapshots live>
+
+### Verified locators / waits
+- **Screens confirmed to use the UI API:** <list>  (others need `waitForAuraAction` — a smell)
+- **Screens still on `/aura`:** <list>
+- **Org language:** <English | other>  ← non-English localizes every accessible name
+- **Locator deviations found vs. the `salesforce-locators` cookbook:** <list>
+
+### Org constraints
+- **Duplicate Rules active on:** <objects>
+- **Required custom fields the factories must set:** <list>
+- **`Opportunity.StageName` valid values:** <from describe>
+- **Daily API request limit / headroom:** <>
+- **Shared org?** <yes → data namespacing + serial tests required | no, scratch per run>

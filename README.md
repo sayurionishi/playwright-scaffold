@@ -97,12 +97,12 @@ Based on your answers, it picks a **profile** that tunes the defaults to your ta
 you don't need, and writes `PROJECT.md`. Every later task reads that file, so the scaffold stops
 being generic and starts being yours.
 
-| Profile      | What it changes                                                                  |
-| ------------ | -------------------------------------------------------------------------------- |
-| `generic`    | Playwright's official locator order (role → label → text → testId). The default. |
-| `controlled` | You can add `data-testid` → testId-first locators. Most stable.                  |
-| `salesforce` | Lightning anti-flake rules; never trusts hashed ids/classes.                     |
-| `api-only`   | Prunes the UI projects (and may suggest a backend-native tool instead).          |
+| Profile      | What it changes                                                                                                    |
+| ------------ | ------------------------------------------------------------------------------------------------------------------ |
+| `generic`    | Playwright's official locator order (role → label → text → testId). The default.                                   |
+| `controlled` | You can add `data-testid` → testId-first locators. Most stable.                                                    |
+| `salesforce` | Activates the **Salesforce pack** — 6 extra skills plus org auth, personas, and metadata-contract code. See below. |
+| `api-only`   | Prunes the UI projects (and may suggest a backend-native tool instead).                                            |
 
 After bootstrap, just describe work in plain language — _"add a page object for the settings page"_,
 _"add API tests for `POST /orders`"_ — and the assistant routes, explores, proposes, and (on
@@ -112,18 +112,60 @@ approval) writes tests that follow the conventions.
 
 ---
 
+## The Salesforce pack
+
+Salesforce isn't "a web app you test" — it's a platform where **your configuration is the system under
+test** and most of the UI is generated. So the `salesforce` profile is more than a locator preference:
+
+**Six extra skills** — `salesforce` (the hub: what to test and, importantly, what _not_ to),
+`salesforce-auth`, `salesforce-locators`, `salesforce-waits`, `salesforce-personas`,
+`salesforce-metadata-contract`, `salesforce-data`.
+
+**Three things that genuinely differ from every other profile:**
+
+1. **Auth is org auth, not a login form.** The JWT bearer flow mints a session without touching the
+   login UI — which is also how you legitimately get past mandatory MFA. One `storageState` per
+   persona. Never automate an MFA challenge.
+2. **The API contract is org metadata.** Salesforce ships no OpenAPI, and `describe` changes the
+   moment an admin clicks Save — no deploy, no PR, no notification. `npm run sf:schemas` generates
+   Zod schemas from the org and commits them as a snapshot, so an admin marking a field required
+   fails **one** named `@contract` test instead of forty UI tests tomorrow morning.
+3. **Every assertion has a "for whom".** The permission model is usually the actual deliverable.
+   Persona × field matrices run at the API layer in seconds — and every absence assertion is paired
+   with a positive control, because `expect(field).toBeHidden()` also passes when your locator is
+   wrong.
+
+Plus a Lightning component-object library (combobox, datatable, modal, toast, record page, list view)
+that encodes the traps: comboboxes aren't `<select>`s, inputs commit on blur, `/aura` can't be waited
+on by URL, and the highlights panel duplicates every detail field value.
+
+**Before your first run:** work through `docs/salesforce/VERIFY-BEFORE-FIRST-RUN.md`. The pack ships
+patterns that are correct in general and depend on your org's configuration — that document is the
+honest list of what to confirm once.
+
+```bash
+npm run sf:schemas -- Account Contact Opportunity   # generate + commit the contract snapshot
+npm run test:contract                               # metadata drift + API version pin
+npm run test:personas                               # the permission matrix
+npm run test:salesforce                             # Lightning UI tests
+```
+
+---
+
 ## Running tests
 
-| Command                                                 | Runs                                          |
-| ------------------------------------------------------- | --------------------------------------------- |
-| `npm run test:api`                                      | the `api` project (backend = SUT, no browser) |
-| `npm run test:functional` / `:e2e`                      | UI projects                                   |
-| `npm run test:smoke` / `:sanity` / `:regression`        | by tag                                        |
-| `npm run test:security`                                 | the `@security` fuzzing subset                |
-| `npm run test:ui` / `:debug` / `:headed`                | interactive debugging                         |
-| `npm run test:ci`                                       | replay CI conditions locally                  |
-| `npm run lint` · `npm run typecheck` · `npm run format` | quality gates                                 |
-| `npm test`                                              | everything except `@destructive`              |
+| Command                                                 | Runs                                                          |
+| ------------------------------------------------------- | ------------------------------------------------------------- |
+| `npm run test:api`                                      | the `api` project (backend = SUT, no browser)                 |
+| `npm run test:functional` / `:e2e`                      | UI projects                                                   |
+| `npm run test:smoke` / `:sanity` / `:regression`        | by tag                                                        |
+| `npm run test:security`                                 | the `@security` fuzzing subset                                |
+| `npm run test:contract` / `:personas` / `:salesforce`   | Salesforce pack (metadata drift · permissions · Lightning UI) |
+| `npm run sf:schemas -- <Object>...`                     | generate Zod schemas from a Salesforce org's `describe`       |
+| `npm run test:ui` / `:debug` / `:headed`                | interactive debugging                                         |
+| `npm run test:ci`                                       | replay CI conditions locally                                  |
+| `npm run lint` · `npm run typecheck` · `npm run format` | quality gates                                                 |
+| `npm test`                                              | everything except `@destructive`                              |
 
 ---
 

@@ -53,9 +53,49 @@ export default defineConfig({
       testDir: './tests/api',
       use: { baseURL: process.env.API_URL ?? BASE_URL },
     },
+    /**
+     * `org` — Salesforce metadata & permission checks. No browser, no auth storage state: the
+     * `org`/`orgAs` fixtures mint their own sessions per persona. Fast enough to run on every push.
+     * Prune this project if the profile isn't `salesforce`.
+     */
+    {
+      name: 'org',
+      testDir: './tests/salesforce',
+      testIgnore: /record-crud\.spec\.ts/,
+    },
+    /**
+     * NOTE: `testDir` is set explicitly on the setup projects. `testMatch` resolves relative to
+     * `testDir`, which globally is './tests' — so a bare /.*\.setup\.ts/ pattern could never reach
+     * the setup files that live under `helpers/`.
+     */
     {
       name: 'setup',
+      testDir: './helpers/auth',
       testMatch: /.*\.setup\.ts/,
+    },
+    /**
+     * `setup:salesforce` — fans out to produce ONE storageState per persona
+     * (`.auth/sf-<key>.json`). Sessions are minted over the API, never by driving the login form.
+     * See the `salesforce-auth` skill.
+     */
+    {
+      name: 'setup:salesforce',
+      testDir: './helpers/salesforce',
+      testMatch: /personas\.setup\.ts/,
+    },
+    /**
+     * `salesforce` — Lightning UI tests, running as the default persona. Tests needing a different
+     * identity use the `asPersona` fixture rather than this project's state.
+     */
+    {
+      name: 'salesforce',
+      testDir: './tests/salesforce',
+      testMatch: /record-crud\.spec\.ts/,
+      use: {
+        ...devices['Desktop Chrome'],
+        storageState: `.auth/sf-${process.env.SF_DEFAULT_PERSONA ?? 'admin'}.json`,
+      },
+      dependencies: ['setup:salesforce'],
     },
     {
       name: 'functional',

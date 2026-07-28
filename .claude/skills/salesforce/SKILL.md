@@ -37,24 +37,66 @@ volunteered to maintain a test that will break on Salesforce's schedule and neve
 The tell: if the test would still pass on a brand-new org with zero customization, it's testing the
 platform. Delete it.
 
+## THE TWO IDENTITIES (get this right before anything else)
+
+Salesforce testing has two distinct identities, and conflating them causes two silent failures.
+
+|                        | Identity               | Fixture                                   | Job                                                                    |
+| ---------------------- | ---------------------- | ----------------------------------------- | ---------------------------------------------------------------------- |
+| **Arrange / teardown** | System Admin           | `adminOrg`                                | Create + delete records, org-wide metadata, query the permission model |
+| **Act / assert**       | the persona under test | `org`, `orgAs(k)`, `page`, `asPersona(k)` | Perform the behaviour, make the assertions                             |
+
+- **Arrange must be admin.** A restricted persona has no Delete, so teardown fails quietly and data
+  leaks. Admin also cannot be blocked by FLS or sharing, so setup is deterministic.
+- **Assertions must NOT be admin.** "Modify All Data" bypasses sharing _and_ FLS, so the assertion
+  passes even when the permission model is completely broken. That is worse than having no test — it
+  reports safety that is not there.
+
+```ts
+test('a user can edit and it persists', async ({ page, adminOrg }) => {
+  const created = await createRecord(adminOrg, 'Account', makeAccount()); // ARRANGE as admin
+  try {
+    // ACT + ASSERT as the subject persona — `page` carries the restricted user's session
+  } finally {
+    await deleteRecordQuietly(adminOrg, 'Account', created.id); // TEARDOWN as admin
+  }
+});
+```
+
+The fixtures enforce what they can: `orgAs()` throws for a privileged persona, and `adminOrg` throws
+if `SF_ADMIN_PERSONA` is not marked `privileged` in `personas.ts`. UI projects default to
+`standardUser`, never admin.
+
 ## The SUT seam — pick the cheapest layer that can fail
 
-Salesforce lets the same behavior be verified at four levels. Choose the lowest one that actually
-exercises your logic, because cost and flake rise steeply as you go up.
+Full detail in `docs/salesforce/TEST-ARCHITECTURE.md`. Choose the lowest layer that actually
+exercises your logic; cost and flake rise steeply as you go up.
 
-| Layer               | Use when                                                | Project      |
-| ------------------- | ------------------------------------------------------- | ------------ |
-| **Metadata**        | The risk is "did the config change?"                    | `org`        |
-| **API (REST/Apex)** | The risk is in server logic — validation, Flow, trigger | `api`        |
-| **UI functional**   | The risk is in _rendering/permission_ of one screen     | `functional` |
-| **UI e2e**          | The risk is a multi-screen business journey             | `e2e`        |
+| Layer             | Project      | Asserts                                                                                                                                            | Never asserts                           |
+| ----------------- | ------------ | -------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------- |
+| **Contract**      | `org`        | Field types, lengths, nillable, picklist VALUES, references, record types, permission-set grants, object CRUD, per-persona FLS, visible-field sets | —                                       |
+| **API behaviour** | `api`        | Server logic: validation rules, Flows, triggers, Apex REST                                                                                         | field metadata                          |
+| **UI functional** | `salesforce` | One screen's behaviour; whether the screen _honours_ the permission model                                                                          | types, picklist values, FLS matrices    |
+| **UI e2e**        | `salesforce` | One multi-screen journey                                                                                                                           | anything the layers below already cover |
 
-A validation rule is server-side. It fires identically for a REST insert and a UI Save. Test it with a
-REST insert asserting the `FIELD_CUSTOM_VALIDATION_EXCEPTION` — that's 200 ms and zero flake. Reserve a
-UI test for the case where the _screen_ is the risk: does the error surface where the user can see it?
+**UI = behaviour. Contract = shape and permissions.** "The Stage picklist offers six values" through a
+browser costs ~20s, needs a session, breaks on a locator change, and covers one field. The same
+assertion at the contract layer is one API call covering every field, and it fails with the field name
+in the message. Absence in the UI is also ambiguous — FLS, page layout, record type, or a collapsed
+section all look identical; the API tells you _which_.
+
+A validation rule is server-side and fires identically for a REST insert and a UI Save. Test it with a
+REST insert asserting `FIELD_CUSTOM_VALIDATION_EXCEPTION` — 200 ms, zero flake. Reserve a UI test for
+when the _screen_ is the risk: does the error surface where the user can see it?
+
+If your UI test count is growing faster than your contract test count, assertions are at the wrong
+layer.
 
 ## Dos
 
+- **Do arrange with `adminOrg` and assert with the subject persona.** The single most important rule
+  in this pack — see above.
+- **Do put shape and permission assertions in the contract layer**, and keep the UI for behaviour.
 - **Do mint sessions via the API and inject them.** UI login is slow, MFA-gated, and the single largest
   source of Salesforce suite flake. `salesforce-auth`.
 - **Do read field API names from `describe`.** Constitution rule #15. Org metadata is not source code.
@@ -69,6 +111,13 @@ UI test for the case where the _screen_ is the risk: does the error surface wher
 
 ## Don'ts
 
+- **Don't run UI tests as System Admin.** You'd be testing a screen no real user sees, with sharing
+  and FLS bypassed. Subject persona always.
+- **Don't tear down as the subject persona.** No Delete → silent cleanup failure → leaked data.
+- **Don't use an admin as a positive control.** It passes via Modify All Data even when the permission
+  set that's supposed to grant access is broken. Use the least-privileged persona that _should_ have it.
+- **Don't put a persona × field matrix in the UI.** Twenty flaky minutes for what one API call does in
+  seconds. Contract layer, then one UI spot-check where rendering is the risk.
 - **Don't automate the Setup UI.** Unversioned, restructured between releases, and slower than the
   Metadata API doing the same job. Use `sf` CLI / Metadata API.
 - **Don't automate an MFA challenge.** Not "it's hard" — it defeats the control and it will break. Use a

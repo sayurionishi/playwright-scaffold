@@ -2,28 +2,58 @@ import { test as base, request as playwrightRequest } from '@playwright/test';
 import { ApiRequest } from '../api/api-request';
 import { getOrgSession, authHeaders, type OrgSession } from '../../helpers/salesforce/auth';
 import { salesforceConfig } from '../../config/salesforce.config';
+import { Personas, assertAssertable, type Persona } from '../../test-data/salesforce/personas';
 
 /**
  * Salesforce org API fixtures.
  *
- * These are LAZY — a Playwright fixture only runs when a test destructures it. So a non-Salesforce
- * clone can keep this file merged into test-options without needing any SF_* env var set. The
- * config getters only throw when a test actually asks for an org client.
+ * ─────────────────────────────────────────────────────────────────────────────────────────────
+ * TWO CLIENTS, TWO JOBS. Using the wrong one is the most consequential mistake in this pack.
  *
- * `org` is an `ApiRequest` (same typed, Zod-validating client the rest of the scaffold uses) bound
- * to the org's INSTANCE url with the session's bearer token. Note the instance host differs from
- * BASE_URL, which for Salesforce is the Lightning host — see `salesforce-auth`.
+ *   `adminOrg`  ARRANGE + TEARDOWN. System Admin. Creates and deletes records. Modify All Data,
+ *               so cleanup is never blocked by FLS or sharing.
+ *               ⚠️ NEVER assert a permission-sensitive fact with this client. Modify All Data
+ *               bypasses sharing AND field-level security, so the test passes even when the
+ *               permission model is completely broken.
+ *
+ *   `org`       ACT + ASSERT. The persona under test (SF_DEFAULT_PERSONA — a restricted user, not
+ *               an admin). This is the client whose view of the org you are actually testing.
+ *
+ *   `orgAs(k)`  ACT + ASSERT as a specific persona. The workhorse of the permission matrix.
+ *               Refuses privileged personas (see `assertAssertable`).
+ * ─────────────────────────────────────────────────────────────────────────────────────────────
+ *
+ * These are LAZY — a Playwright fixture only runs when a test destructures it — so a
+ * non-Salesforce clone can keep this file merged into test-options without any SF_* var set.
  */
 export interface SalesforceOrgFixtures {
-  /** The default persona's session (from SF_DEFAULT_PERSONA). */
+  /** The subject persona's session. */
   orgSession: OrgSession;
-  /** API client for the default persona. */
+  /**
+   * ARRANGE/TEARDOWN client (System Admin). Create and delete records with this.
+   * Do NOT assert permissions with it — it bypasses the very rules under test.
+   */
+  adminOrg: ApiRequest;
+  /** ACT/ASSERT client — the persona under test. */
   org: ApiRequest;
   /**
-   * API client for a SPECIFIC persona — the workhorse of the permission matrix.
-   * Clients are created per test and disposed on teardown, never shared across personas.
+   * ACT/ASSERT client for a SPECIFIC persona. Throws for a privileged persona, because an admin
+   * subject makes a permission assertion meaningless.
    */
   orgAs: (personaKey: string) => Promise<ApiRequest>;
+  /** The persona metadata for the current subject — handy in test titles and messages. */
+  subjectPersona: Persona;
+}
+
+function lookupPersona(personaKey: string): Persona {
+  const found = Object.values(Personas).find((p) => p.key === personaKey);
+  if (found === undefined) {
+    throw new Error(
+      `Unknown persona "${personaKey}". Add it to test-data/salesforce/personas.ts ` +
+        `(known: ${Object.keys(Personas).join(', ')}).`,
+    );
+  }
+  return found;
 }
 
 export const test = base.extend<SalesforceOrgFixtures>({
@@ -32,6 +62,33 @@ export const test = base.extend<SalesforceOrgFixtures>({
   // for fixtures/** in eslint.config.mjs for exactly this reason.
   orgSession: async ({}, use) => {
     await use(await getOrgSession(salesforceConfig.defaultPersona));
+  },
+
+  subjectPersona: async ({}, use) => {
+    await use(lookupPersona(salesforceConfig.defaultPersona));
+  },
+
+  adminOrg: async ({}, use) => {
+    const adminKey = salesforceConfig.adminPersona;
+    const adminPersona = lookupPersona(adminKey);
+
+    // Catch a misconfigured SF_ADMIN_PERSONA early. Arranging as a restricted identity fails in
+    // the most annoying way possible: teardown silently can't delete, and data leaks for weeks.
+    if (!adminPersona.privileged) {
+      throw new Error(
+        `SF_ADMIN_PERSONA="${adminKey}" is not marked privileged in personas.ts. The arrange/teardown ` +
+          'identity needs Modify All Data so cleanup is never blocked by FLS or sharing. ' +
+          'See `salesforce-personas`.',
+      );
+    }
+
+    const session = await getOrgSession(adminKey);
+    const context = await playwrightRequest.newContext({
+      baseURL: session.instanceUrl,
+      extraHTTPHeaders: authHeaders(session),
+    });
+    await use(new ApiRequest(context, session.instanceUrl));
+    await context.dispose();
   },
 
   org: async ({ orgSession }, use) => {
@@ -48,6 +105,9 @@ export const test = base.extend<SalesforceOrgFixtures>({
     const created: Array<{ dispose: () => Promise<void> }> = [];
 
     await use(async (personaKey: string) => {
+      // Refuse a privileged subject — an admin client would pass any permission assertion.
+      assertAssertable(lookupPersona(personaKey));
+
       const session = await getOrgSession(personaKey);
       const context = await playwrightRequest.newContext({
         baseURL: session.instanceUrl,

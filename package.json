@@ -16,6 +16,7 @@
     "test:personas": "playwright test --project=org --grep @persona",
     "test:salesforce": "playwright test --project=salesforce",
     "sf:schemas": "tsx scripts/generate-sobject-schemas.ts",
+    "sf:visible-fields": "tsx scripts/generate-visible-fields.ts",
     "test:destructive": "playwright test --grep @destructive --workers=1",
     "test:ui": "playwright test --ui",
     "test:debug": "playwright test --debug",

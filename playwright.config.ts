@@ -54,14 +54,18 @@ export default defineConfig({
       use: { baseURL: process.env.API_URL ?? BASE_URL },
     },
     /**
-     * `org` — Salesforce metadata & permission checks. No browser, no auth storage state: the
-     * `org`/`orgAs` fixtures mint their own sessions per persona. Fast enough to run on every push.
-     * Prune this project if the profile isn't `salesforce`.
+     * `org` — the Salesforce CONTRACT layer. No browser, no storageState: the `adminOrg`/`org`/
+     * `orgAs` fixtures mint their own sessions per persona.
+     *
+     * This is where field types, lengths, picklist values, permission-set grants, object CRUD, and
+     * the per-persona FLS matrix are asserted — dozens of combinations in seconds. The UI layer
+     * then only tests behaviour. See docs/salesforce/TEST-ARCHITECTURE.md.
+     *
+     * Fast and dependency-free, so run it on every push. Prune if the profile isn't `salesforce`.
      */
     {
       name: 'org',
-      testDir: './tests/salesforce',
-      testIgnore: /record-crud\.spec\.ts/,
+      testDir: './tests/salesforce/contract',
     },
     /**
      * NOTE: `testDir` is set explicitly on the setup projects. `testMatch` resolves relative to
@@ -84,16 +88,21 @@ export default defineConfig({
       testMatch: /personas\.setup\.ts/,
     },
     /**
-     * `salesforce` — Lightning UI tests, running as the default persona. Tests needing a different
-     * identity use the `asPersona` fixture rather than this project's state.
+     * `salesforce` — the Lightning UI/BEHAVIOUR layer.
+     *
+     * Runs as the SUBJECT persona — a restricted user, NOT System Admin. That default is
+     * deliberate: a UI test running as admin exercises a screen no real user sees, and an admin's
+     * Modify All Data bypasses sharing and FLS, hiding the bugs you meant to catch. Records are
+     * arranged and torn down through the `adminOrg` fixture instead.
+     *
+     * Tests needing a different identity use `asPersona` rather than this project's state.
      */
     {
       name: 'salesforce',
-      testDir: './tests/salesforce',
-      testMatch: /record-crud\.spec\.ts/,
+      testDir: './tests/salesforce/ui',
       use: {
         ...devices['Desktop Chrome'],
-        storageState: `.auth/sf-${process.env.SF_DEFAULT_PERSONA ?? 'admin'}.json`,
+        storageState: `.auth/sf-${process.env.SF_DEFAULT_PERSONA ?? 'standardUser'}.json`,
       },
       dependencies: ['setup:salesforce'],
     },

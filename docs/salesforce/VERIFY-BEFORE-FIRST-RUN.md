@@ -122,20 +122,29 @@ these patterns need translating — that's a real change, not a tweak.
 ## Minimum path to a first green run
 
 ```bash
-# 1. Auth + connectivity + API version, all in one
+# 1. Auth + connectivity + API version, all in one (uses the admin persona)
 npm run sf:schemas -- Account
 
-# 2. Browser session injection (the critical one)
+# 2. Browser session injection — the critical one. Fans out over every UI-capable persona.
 npx playwright test --project=setup:salesforce
 
-# 3. Metadata contract
+# 3. Contract layer: shape + version pin
 npm run test:contract
 
-# 4. One UI test
-npx playwright test --project=salesforce -g "displays a record created via the API"
+# 4. Contract layer: grants, CRUD, FLS
+npm run test:personas
+
+# 5. Generate the leak-detection sets, review, commit
+npm run sf:visible-fields -- Account
+
+# 6. One UI behaviour test
+npx playwright test --project=salesforce -g "a user can view a record created via the API"
 ```
 
-If step 1 fails → section 1. Step 2 → section 2. Step 4 → sections 3 and 4.
+If step 1 fails → section 1. Step 2 → section 2 (and check every persona has a real org user).
+Step 4 → section 6. Step 6 → sections 3 and 4.
+
+Steps 3–5 need no browser and are fast, so they belong on every push. Step 6 is the slow layer.
 
 Record what you found in `PROJECT.md` under "Target-specific facts", so the next person (or the next
 AI session) doesn't rediscover it.

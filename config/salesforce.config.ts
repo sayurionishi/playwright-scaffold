@@ -90,9 +90,26 @@ export const salesforceConfig = {
     return required('SF_TARGET_ORG');
   },
 
-  /** Default persona used by UI projects when a test does not ask for a specific one. */
+  /**
+   * The ARRANGE / TEARDOWN identity — System Admin.
+   *
+   * Used by the `adminOrg` fixture to create and delete records. It needs Modify All Data so
+   * cleanup can never be blocked by FLS or sharing. For exactly that reason it must NEVER be the
+   * subject of an assertion. See `salesforce-personas`.
+   */
+  get adminPersona(): string {
+    return process.env.SF_ADMIN_PERSONA ?? 'sysAdmin';
+  },
+
+  /**
+   * The SUBJECT identity — the persona UI tests run as and the one `org` asserts with.
+   *
+   * Deliberately NOT an admin: a UI test running as System Admin exercises a screen no real user
+   * ever sees, and an admin's Modify All Data hides every sharing and FLS bug. Default is a
+   * realistic restricted user.
+   */
   get defaultPersona(): string {
-    return process.env.SF_DEFAULT_PERSONA ?? 'admin';
+    return process.env.SF_DEFAULT_PERSONA ?? 'standardUser';
   },
 
   /**

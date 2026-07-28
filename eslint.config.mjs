@@ -48,7 +48,23 @@ export default tseslint.config(
       'playwright/no-networkidle': 'warn',
       // Assertions belong in specs, never in page objects.
       'playwright/no-standalone-expect': 'off',
-      'playwright/expect-expect': 'warn',
+      /* The Salesforce contract layer asserts through shared helpers (assertObjectShape,
+         assertFieldAccess, assertVisibleFieldSet, …) so that one run reports every drifted field
+         instead of stopping at the first. Teach the rule to recognise them — otherwise it reports
+         "test has no assertions" on the most assertion-dense tests in the suite. */
+      'playwright/expect-expect': [
+        'warn',
+        {
+          assertFunctionNames: [
+            'expect',
+            'assertObjectShape',
+            'assertFieldShape',
+            'assertObjectCrud',
+            'assertFieldAccess',
+            'assertVisibleFieldSet',
+          ],
+        },
+      ],
     },
   },
 );

@@ -1,9 +1,13 @@
-import { test, expect } from '../../fixtures/test-options';
-import { SalesforceApi } from '../../enums/salesforce/salesforce-api';
-import { SObjects } from '../../enums/salesforce/sobjects';
-import { salesforceConfig } from '../../config/salesforce.config';
-import { VersionListSchema } from '../../fixtures/salesforce/schemas/salesforce-common.schema';
-import { fetchDescribe, normalizeDescribe, diffSnapshots } from '../../helpers/salesforce/describe';
+import { test, expect } from '../../../fixtures/test-options';
+import { SalesforceApi } from '../../../enums/salesforce/salesforce-api';
+import { SObjects } from '../../../enums/salesforce/sobjects';
+import { salesforceConfig } from '../../../config/salesforce.config';
+import { VersionListSchema } from '../../../fixtures/salesforce/schemas/salesforce-common.schema';
+import {
+  fetchDescribe,
+  normalizeDescribe,
+  diffSnapshots,
+} from '../../../helpers/salesforce/describe';
 
 /**
  * EXAMPLE metadata-contract tests. Runs in the `org` project (no browser).
@@ -19,8 +23,8 @@ test.describe('Salesforce API version', () => {
   test(
     'the pinned API version is still supported by the org',
     { tag: '@contract' },
-    async ({ org }) => {
-      const { data } = await org.get(SalesforceApi.VERSIONS, {
+    async ({ adminOrg }) => {
+      const { data } = await adminOrg.get(SalesforceApi.VERSIONS, {
         schema: VersionListSchema,
         expectStatus: 200,
       });
@@ -68,8 +72,8 @@ test.describe('Object metadata drift', () => {
     test(
       `${target.name} metadata matches the committed snapshot`,
       { tag: '@contract' },
-      async ({ org }) => {
-        const live = normalizeDescribe(await fetchDescribe(org, target.name));
+      async ({ adminOrg }) => {
+        const live = normalizeDescribe(await fetchDescribe(adminOrg, target.name));
         const expected = target.snapshot as ReturnType<typeof normalizeDescribe>;
 
         // diffSnapshots so a failure names WHAT changed instead of dumping two large objects.
@@ -90,10 +94,10 @@ test.describe('Metadata endpoint envelope', () => {
   test(
     'Account metadata returns the documented describe shape',
     { tag: '@contract' },
-    async ({ org }) => {
+    async ({ adminOrg }) => {
       // Account is a standard object present in every org, so this is safe without generation —
       // it validates the describe ENVELOPE, which is what the generator depends on.
-      const describe = await fetchDescribe(org, SObjects.ACCOUNT);
+      const describe = await fetchDescribe(adminOrg, SObjects.ACCOUNT);
 
       expect(describe.name).toBe(SObjects.ACCOUNT);
       expect(describe.keyPrefix).toBe('001');

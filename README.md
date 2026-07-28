@@ -121,19 +121,46 @@ test** and most of the UI is generated. So the `salesforce` profile is more than
 `salesforce-auth`, `salesforce-locators`, `salesforce-waits`, `salesforce-personas`,
 `salesforce-metadata-contract`, `salesforce-data`.
 
-**Three things that genuinely differ from every other profile:**
+**Four things that genuinely differ from every other profile:**
 
-1. **Auth is org auth, not a login form.** The JWT bearer flow mints a session without touching the
+1. **Two identities, not one.** `adminOrg` (System Admin) arranges and tears down; the subject persona
+   acts and asserts. Arrange as a restricted user and teardown silently can't delete, so data leaks.
+   Assert as an admin and Modify All Data bypasses sharing _and_ FLS, so the test passes with the
+   permission model completely broken. UI projects default to `standardUser`, never admin.
+2. **Auth is org auth, not a login form.** The JWT bearer flow mints a session without touching the
    login UI — which is also how you legitimately get past mandatory MFA. One `storageState` per
-   persona. Never automate an MFA challenge.
-2. **The API contract is org metadata.** Salesforce ships no OpenAPI, and `describe` changes the
+   UI-capable persona. Never automate an MFA challenge.
+3. **The API contract is org metadata.** Salesforce ships no OpenAPI, and `describe` changes the
    moment an admin clicks Save — no deploy, no PR, no notification. `npm run sf:schemas` generates
    Zod schemas from the org and commits them as a snapshot, so an admin marking a field required
    fails **one** named `@contract` test instead of forty UI tests tomorrow morning.
-3. **Every assertion has a "for whom".** The permission model is usually the actual deliverable.
-   Persona × field matrices run at the API layer in seconds — and every absence assertion is paired
-   with a positive control, because `expect(field).toBeHidden()` also passes when your locator is
-   wrong.
+4. **Every assertion has a "for whom".** The permission model is usually the actual deliverable, so
+   personas form a **lattice** — nine of them, each differing from its neighbour on exactly one axis
+   (CRUD, FLS, sharing, UI-capability), so a failing matrix cell tells you which axis broke.
+
+**Layering is explicit** — see `docs/salesforce/TEST-ARCHITECTURE.md`:
+
+| Layer        | Project            | Asserts                                                                                                                                                                     |
+| ------------ | ------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Contract** | `org` (no browser) | field types, lengths, nillable, **picklist values**, reference targets, record types, **permission-set grants**, object CRUD, per-persona **FLS**, exact visible-field sets |
+| **UI**       | `salesforce`       | **behaviour only** — workflows, persistence, and whether the screen _honours_ the model above                                                                               |
+
+That split is the point. "The Stage picklist offers six values" through a browser costs ~20s, needs a
+session, breaks on a locator change, and covers one field; at the contract layer it's one API call
+covering every field. And UI absence is ambiguous — FLS, page layout, record type, and a collapsed
+section all look identical — where the API tells you which.
+
+Three assertions worth calling out:
+
+- **Grants, not just effects.** `object-info` says a persona can't edit a field; it doesn't say why.
+  Asserting `PermissionSetAssignment` **exactly** turns "six FLS tests went red mysteriously" into
+  "this permission set was unassigned" — and an _extra_ set is privilege escalation, which a
+  "contains" check misses.
+- **No sharing bypass.** `ViewAllRecords`/`ModifyAllRecords` on a non-admin silently defeats the whole
+  sharing model while every sharing test still passes. Highest-severity misconfiguration in Salesforce;
+  almost nobody tests for it.
+- **Exact visible-field sets.** Field-by-field FLS only covers fields you thought to list, so a newly
+  added field that defaults to visible leaks silently. An exact-set assertion fails on it immediately.
 
 Plus a Lightning component-object library (combobox, datatable, modal, toast, record page, list view)
 that encodes the traps: comboboxes aren't `<select>`s, inputs commit on blur, `/aura` can't be waited
@@ -144,10 +171,11 @@ patterns that are correct in general and depend on your org's configuration — 
 honest list of what to confirm once.
 
 ```bash
-npm run sf:schemas -- Account Contact Opportunity   # generate + commit the contract snapshot
-npm run test:contract                               # metadata drift + API version pin
-npm run test:personas                               # the permission matrix
-npm run test:salesforce                             # Lightning UI tests
+npm run sf:schemas -- Account Contact Opportunity   # generate + commit the shape snapshot
+npm run sf:visible-fields -- Account                # per-persona visible-field sets (leak detection)
+npm run test:contract                               # shape, drift, API version pin
+npm run test:personas                               # grants, CRUD, FLS, visible-field sets
+npm run test:salesforce                             # Lightning UI behaviour, as the subject persona
 ```
 
 ---

@@ -9,9 +9,19 @@ Extends `data-strategy` (Faker factories for happy-path, static tiers for invali
 (setup/teardown lifecycle). This skill covers the Salesforce-specific parts: how to make records, how to
 get rid of them, and how not to exhaust the org.
 
-## The rule
+## Two rules
 
-> **Never create a record through the UI unless the creation flow itself is the system under test.**
+> **1. Never create a record through the UI unless the creation flow itself is the system under test.**
+>
+> **2. Arrange and tear down as System Admin (`adminOrg`) — never as the persona under test.**
+
+Rule 2 is the one that bites quietly. A restricted persona has no Delete, so teardown as the subject
+"succeeds" (`deleteRecordQuietly` swallows errors on purpose, so cleanup never masks a real assertion
+failure) and data leaks into the sandbox for weeks. Admin also can't be blocked by FLS or sharing, so
+setup is deterministic.
+
+The mirror of rule 2: **never ASSERT with `adminOrg`.** Modify All Data bypasses sharing and FLS, so
+the assertion passes even with the permission model broken. See `salesforce-personas`.
 
 Clicking through New → fill → Save to get an Account so you can test an Opportunity costs ~30 seconds and
 imports every Lightning flake into a test that isn't about Accounts. One `composite/tree` call does it in
@@ -167,6 +177,8 @@ and a picklist value that was valid before an admin removed it.
 ## Don't
 
 - Don't create setup records through the UI.
+- Don't arrange or tear down as the subject persona — use `adminOrg`.
+- Don't assert with `adminOrg` — it bypasses the rules you're testing.
 - Don't reuse a fixed record name — duplicate rules will fail you on the second run.
 - Don't trust `200` from `composite`/`composite/tree`. Check `hasErrors` / per-subrequest status.
 - Don't let teardown errors mask test failures.
@@ -179,6 +191,7 @@ and a picklist value that was valid before an admin removed it.
 ## Checklist
 
 - [ ] Setup via API (`composite/tree` for hierarchies), not the UI.
+- [ ] Arranged and torn down with `adminOrg`; assertions made as the subject persona.
 - [ ] Names unique across parallel workers and prefixed with `TEST_PREFIX`.
 - [ ] Teardown in a fixture, errors swallowed, children before parents.
 - [ ] `hasErrors` / subrequest statuses asserted.

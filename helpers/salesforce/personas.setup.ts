@@ -1,7 +1,7 @@
 import { test as setup, expect } from '@playwright/test';
 import { getOrgSession, applySession } from './auth';
 import { salesforceConfig } from '../../config/salesforce.config';
-import { ALL_PERSONAS } from '../../test-data/salesforce/personas';
+import { UI_PERSONAS } from '../../test-data/salesforce/personas';
 import { LightningRoutes } from '../../enums/salesforce/lightning-routes';
 
 /**
@@ -16,8 +16,12 @@ import { LightningRoutes } from '../../enums/salesforce/lightning-routes';
  *
  * NEVER share one persona's context across personas: cached Lightning and metadata state produces
  * tests that pass alone and fail in the suite.
+ *
+ * Iterates UI_PERSONAS, not ALL_PERSONAS: an API-only identity (`uiCapable: false`, e.g. an
+ * integration user) has no UI licence, so trying to build a browser session for it would fail here
+ * for a correct reason and block the whole run.
  */
-for (const persona of ALL_PERSONAS) {
+for (const persona of UI_PERSONAS) {
   setup(`authenticate ${persona.key}`, async ({ browser }) => {
     const session = await getOrgSession(persona.key);
 

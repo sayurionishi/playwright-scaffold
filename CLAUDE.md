@@ -163,23 +163,41 @@ The `selectors` and `wait-strategy` skills read the active profile from `PROJECT
 `salesforce` is not just a locator preference — it ships its own skills (§4) and its own code:
 
 ```
-config/salesforce.config.ts           org URLs, API version pin, per-persona creds
+config/salesforce.config.ts           org URLs, API version pin, admin + subject personas
 enums/salesforce/                     sObject names, ui-api paths, /lightning/* routes
-helpers/salesforce/                   auth (JWT/SFDX/session) · describe · soql · lightning waits
-fixtures/salesforce/                  org client · persona contexts · metadata schemas
+helpers/salesforce/                   auth · describe · soql · lightning waits · contract · permissions
+fixtures/salesforce/                  adminOrg + org + orgAs · persona contexts · metadata schemas
 pages/salesforce/                     Lightning component objects (combobox, datatable, modal, toast…)
-test-data/salesforce/                 personas.ts + record factories
-tests/salesforce/                     contract · FLS matrix · record CRUD
-scripts/generate-sobject-schemas.ts   describe → Zod (run at bootstrap, per org)
+test-data/salesforce/personas.ts      the persona lattice (9 personas, one axis apart)
+test-data/salesforce/contracts/       the contract AS DATA — shape + CRUD + FLS per persona
+tests/salesforce/contract/            org project: drift · field shape · permissions   (no browser)
+tests/salesforce/ui/                  salesforce project: behaviour as the subject persona
+scripts/generate-sobject-schemas.ts   describe → Zod          (run at bootstrap, per org)
+scripts/generate-visible-fields.ts    per-persona visible-field sets  (leak detection)
 ```
 
-Three things differ from every other profile, and they are the whole reason the pack exists:
+Four things differ from every other profile, and they are the whole reason the pack exists:
 
-1. **Auth is org auth, not a login form.** The JWT bearer flow mints a session without touching the
+1. **Two identities, not one.** `adminOrg` (System Admin) ARRANGES and TEARS DOWN; the subject persona
+   ACTS and ASSERTS. Arrange as a restricted user → teardown silently cannot delete → data leaks.
+   Assert as an admin → Modify All Data bypasses sharing and FLS → the test passes with the permission
+   model completely broken. UI projects default to `standardUser`, never admin.
+2. **Auth is org auth, not a login form.** The JWT bearer flow mints a session without touching the
    login UI — which is also how you legitimately get past mandatory MFA. Never automate an MFA challenge.
-2. **The API contract is org metadata.** Salesforce ships no OpenAPI. `describe` _is_ the contract, and
+3. **The API contract is org metadata.** Salesforce ships no OpenAPI. `describe` _is_ the contract, and
    it changes the moment an admin clicks Save — so drift detection is a first-class test type (`@contract`).
-3. **Every assertion has a "for whom".** The permission model is the product. One `storageState` per
-   persona, and absence assertions require a positive control (`salesforce-personas`).
+4. **Every assertion has a "for whom".** The permission model is the product. Personas form a lattice
+   (each differs on exactly one axis), and absence assertions need a positive control that is **not**
+   an admin — an admin passes via Modify All Data even with the grant broken.
+
+**Layering is not optional here** (`docs/salesforce/TEST-ARCHITECTURE.md`):
+
+| Layer    | Project            | Asserts                                                                                                                                  |
+| -------- | ------------------ | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| Contract | `org` (no browser) | types, lengths, picklist VALUES, references, record types, permission-set grants, object CRUD, per-persona FLS, exact visible-field sets |
+| UI       | `salesforce`       | **behaviour only** — workflows, persistence, and whether the screen _honours_ the model above                                            |
+
+Field metadata and permission matrices in the UI are a wrong-layer error: ~100× the cost, and UI
+absence is ambiguous (FLS? page layout? record type?) where the API tells you which.
 
 If the profile is NOT `salesforce`, `bootstrap` prunes all of the above.

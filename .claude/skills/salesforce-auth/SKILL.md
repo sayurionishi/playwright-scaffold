@@ -115,6 +115,15 @@ for (const persona of PERSONAS) {
 Each persona's state lands at `.auth/sf-<persona>.json`. UI projects declare which one they default to;
 a test needing a different persona uses the `asPersona` fixture.
 
+Two details that matter:
+
+- **The fan-out iterates `UI_PERSONAS`, not all of them.** An API-only identity (`uiCapable: false`,
+  e.g. an integration user) has no UI licence, so building a browser session for it fails for a
+  perfectly correct reason and would block the whole run.
+- **The UI default is `standardUser`, not an admin.** `SF_ADMIN_PERSONA` (arrange/teardown) and
+  `SF_DEFAULT_PERSONA` (the subject) are deliberately separate env vars. A UI test running as System
+  Admin exercises a screen no real user sees and bypasses sharing and FLS — see `salesforce-personas`.
+
 **Never** reuse one persona's context for another persona's assertions. Cached Lightning state and
 cached org metadata will make the test pass alone and fail in the suite.
 
@@ -146,5 +155,7 @@ await expect(page.getByRole('button', { name: 'App Launcher' })).toBeVisible();
 - [ ] Connected App assigned to the test users' profile/permset (step 4 above).
 - [ ] Session injected, not typed into a form.
 - [ ] `instance_url` read from the token response.
-- [ ] One `storageState` per persona, verified with a post-auth assertion.
+- [ ] One `storageState` per UI-capable persona, verified with a post-auth assertion.
+- [ ] `SF_ADMIN_PERSONA` (arrange) and `SF_DEFAULT_PERSONA` (subject) both set, and the subject is NOT
+      an admin.
 - [ ] No token in logs, no key in git.

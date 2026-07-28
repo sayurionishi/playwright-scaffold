@@ -66,10 +66,30 @@ a snapshot and assert against it (`@contract`). See `salesforce-metadata-contrac
   automatically — and orgs that have enabled native shadow behave differently again. Don't build a
   strategy that depends on either; role and label engines work in both. See `salesforce-locators`.
 
+## The two identities
+
+|                    | Identity                               | Fixture                             | Job                                                |
+| ------------------ | -------------------------------------- | ----------------------------------- | -------------------------------------------------- |
+| Arrange / teardown | System Admin (`SF_ADMIN_PERSONA`)      | `adminOrg`                          | create + delete records, org-wide metadata, grants |
+| Act / assert       | subject persona (`SF_DEFAULT_PERSONA`) | `org`, `orgAs`, `page`, `asPersona` | behaviour + assertions                             |
+
+Arrange as a restricted user and teardown silently cannot delete, so data leaks. Assert as an admin and
+Modify All Data bypasses sharing and FLS, so the test passes with the permission model broken. UI
+projects default to `standardUser`. See `docs/salesforce/TEST-ARCHITECTURE.md`.
+
+## Layering
+
+| Layer    | Dir → project                         | Asserts                                                                                                                                  |
+| -------- | ------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| Contract | `tests/salesforce/contract/` → `org`  | types, lengths, picklist VALUES, references, record types, permission-set grants, object CRUD, per-persona FLS, exact visible-field sets |
+| UI       | `tests/salesforce/ui/` → `salesforce` | **behaviour only** — workflows, persistence, and whether the screen honours the model above                                              |
+
+Field metadata or a permission matrix in the UI is a wrong-layer error.
+
 ## Projects enabled
 
-`setup` (one run per persona), `functional`, `e2e`, `api` (record setup/teardown), and `org`
-(metadata/contract checks, no browser).
+`setup:salesforce` (one run per UI-capable persona), `org` (contract, no browser), `salesforce` (UI
+behaviour), and `api` (record setup/teardown).
 
 ## Notes
 

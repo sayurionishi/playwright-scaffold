@@ -24,6 +24,65 @@ Admin marks Margin__c required
 A committed metadata snapshot turns that into **one** failing test named "Opportunity contract drift"
 with a diff showing exactly what changed. That is the highest-leverage thing in this entire pack.
 
+## What the contract layer covers (all of it, not just shape)
+
+`tests/salesforce/contract/` is where every assertion about **shape** and **permissions** lives. It is
+cheap enough to be exhaustive, so make it exhaustive:
+
+| Dimension  | Asserted                                                                                                                                                  | Spec                     |
+| ---------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------ |
+| **Shape**  | field types, max lengths, nillable, picklist VALUES, restricted-picklist, reference targets, unique/externalId, precision/scale, record types, key prefix | `field-contract.spec.ts` |
+| **Drift**  | normalized `describe` snapshot, pinned API version still supported                                                                                        | `metadata-drift.spec.ts` |
+| **Grants** | permission-set assignments (EXACT), profile, role, no ViewAll/ModifyAll on non-admins                                                                     | `permissions.spec.ts`    |
+| **CRUD**   | createable / updateable / deletable / queryable, per persona                                                                                              | `permissions.spec.ts`    |
+| **FLS**    | per-persona visible + editable + required, per field                                                                                                      | `permissions.spec.ts`    |
+| **Leaks**  | the EXACT visible-field set per persona                                                                                                                   | `permissions.spec.ts`    |
+
+**None of this belongs in the UI.** "The Stage picklist offers six values" through a browser costs
+~20s, needs a session, breaks on a locator change, and covers one field. Here it's one API call
+covering every field, failing with the field name in the message. See
+`docs/salesforce/TEST-ARCHITECTURE.md`.
+
+## The contract is DATA, not code
+
+`test-data/salesforce/contracts/` holds typed contract objects; one spec iterates them. Adding a field
+or a persona is a single row, so coverage is something you **read** rather than audit.
+
+```ts
+export const AccountContract: ObjectContract = {
+  object: 'Account',
+  keyPrefix: '001',
+  fields: [
+    { name: 'Name', type: 'string', length: 255, nillable: false },
+    { name: 'OwnerId', type: 'reference', nillable: false, referenceTo: ['User'] },
+    // picklist VALUES are the highest-value thing to pin — Apex and Flows branch on them
+    { name: 'Type', type: 'picklist', picklistValues: ['Customer', 'Partner'] },
+  ],
+  crudByPersona: {
+    standardUser: { createable: true, updateable: true, deletable: false, queryable: true },
+  },
+  fieldAccessByPersona: { limitedFields: { AnnualRevenue: { visible: false, editable: false } } },
+  visibleFieldsByPersona: { limitedFields: ['Id', 'Name' /* … */] },
+};
+```
+
+**Only assert what you depend on.** Every entry will (correctly) fail a build when an admin changes it,
+so an over-specified contract is a maintenance tax. Types and picklist values are almost always worth
+pinning; labels never are (translators change them, nothing breaks).
+
+Assertion helpers live in `helpers/salesforce/contract.ts` and use `expect.soft` for per-field checks,
+so **one run reports every drifted field**. Fixing 12 fields across 12 red runs is how teams start
+ignoring contract tests.
+
+## Which endpoint answers which question
+
+- **`describe`** — org-wide shape. Read it with **`adminOrg`**: read as a restricted persona it omits
+  fields that persona can't see, which looks identical to fields being deleted from the org.
+- **`ui-api/object-info`** — the same metadata _as the calling user sees it_, resolving profile +
+  permission sets + muting. Read it with **`orgAs(persona)`**. This is the FLS/permission oracle.
+
+Using the wrong one is the most common mistake in this layer.
+
 ## The two metadata endpoints
 
 | Endpoint                       | Gives you                                       | Use for              |
@@ -195,9 +254,15 @@ timeout and is not a blind sleep. Don't reach for `waitForTimeout` here.
 - Don't trust a `composite` `200`. Check every subrequest's `httpStatusCode`.
 - Don't `SELECT *` — there's no such thing in SOQL, and enumerating fields from `describe` keeps the
   query honest about what the contract covers.
+- Don't read `describe` as a restricted persona — omitted fields look like deleted fields. Use `adminOrg`.
+- Don't assert permissions with `describe` — it's org-wide. Use `ui-api/object-info` via `orgAs`.
+- Don't assert field metadata through the UI. Wrong layer, 100× the cost, ambiguous failures.
+- Don't over-specify the contract. Pin what you depend on; labels are not a contract.
 
 ## Checklist
 
+- [ ] Shape read with `adminOrg`; per-persona permissions read with `orgAs`.
+- [ ] Contract expressed as DATA in `test-data/salesforce/contracts/`, not hand-written tests.
 - [ ] Schemas generated from `describe`, committed as the snapshot.
 - [ ] A `@contract` drift test per object the suite depends on.
 - [ ] `normalizeDescribe` exclusions short and justified.
@@ -206,3 +271,6 @@ timeout and is not a blind sleep. Don't reach for `waitForTimeout` here.
 - [ ] Composite subrequest statuses asserted individually.
 - [ ] Apex REST error shape treated as an array.
 - [ ] Async platform effects awaited with `expect.poll`, never a sleep.
+- [ ] Permission-set grants, object CRUD, per-persona FLS, and visible-field SETS all asserted here —
+      not in the UI.
+- [ ] Per-field checks use `expect.soft` so one run reports every drift.

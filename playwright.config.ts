@@ -205,7 +205,9 @@ export default defineConfig({
       timeout: TIMEOUTS.salesforceTest,
       use: {
         ...devices['Desktop Chrome'],
-        storageState: `.auth/sf-${process.env.SF_DEFAULT_PERSONA ?? 'standardUser'}.json`,
+        // Namespaced by ENVIRONMENT (the same constant used above to pick the .env file) so a run
+        // against staging never picks up a session `setup:salesforce` minted for dev, or vice versa.
+        storageState: `.auth/${ENVIRONMENT}/sf-${process.env.SF_DEFAULT_PERSONA ?? 'standardUser'}.json`,
         actionTimeout: TIMEOUTS.salesforceAction,
         navigationTimeout: TIMEOUTS.salesforceNavigation,
       },

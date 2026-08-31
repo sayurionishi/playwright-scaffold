@@ -31,7 +31,14 @@ export interface OrgSession {
   readonly personaKey: string;
 }
 
-/** Cache sessions per persona so a 4-project run mints one token per persona, not one per test. */
+/**
+ * Cache sessions per persona so a 4-project run mints one token per persona, not one per test.
+ *
+ * Keyed by personaKey only — not by environment — and that's safe: `ENVIRONMENT` is resolved once,
+ * by `dotenv.config()`, before any code in this process runs, so a single process only ever talks
+ * to ONE environment. There is no "switch environments mid-run" case to guard against here; that's
+ * what `salesforceConfig.storageStateFor` and the generated snapshot map exist for instead.
+ */
 const sessionCache = new Map<string, OrgSession>();
 
 /** Emit the sfdx single-identity warning once per process, not once per fixture. */

@@ -102,8 +102,24 @@ you add an object:
 npm run sf:schemas -- Account Contact Opportunity
 ```
 
-It writes `fixtures/salesforce/schemas/generated/<object>.schema.ts`. **Generated files are committed** —
-that's the whole point: the commit is the snapshot, and `git diff` after a re-run is your drift report.
+It writes `fixtures/salesforce/schemas/generated/<object>.schema.ts` (the Zod schema) and
+`<object>.snapshot.ts` (the drift-check snapshot). **Generated files are committed** — that's the
+whole point: the commit is the snapshot, and `git diff` after a re-run is your drift report.
+
+**The snapshot is keyed by environment.** Testing more than one org (dev, staging, …)? Dev and
+staging sandboxes routinely have different metadata shapes for reasons that aren't drift — an
+unrefreshed sandbox, a field that landed in dev but hasn't deployed to staging yet. One snapshot per
+object, keyed by `ENVIRONMENT`, means running against a different org never produces a false failure:
+
+```bash
+ENVIRONMENT=dev     npm run sf:schemas -- Account   # writes/updates the "dev" entry
+ENVIRONMENT=staging npm run sf:schemas -- Account   # writes/updates "staging" — "dev" untouched
+```
+
+The generator reads the existing file back and merges before writing, so regenerating one
+environment never clobbers another's committed shape. `tests/salesforce/contract/metadata-drift.spec.ts`
+picks `snapshotByEnv[salesforceConfig.environment]` at runtime. Single-org setups can ignore all of
+this — it just works with one key. See `docs/salesforce/TEST-ARCHITECTURE.md` §"Multi-environment".
 
 The type mapping it applies:
 
@@ -258,6 +274,8 @@ timeout and is not a blind sleep. Don't reach for `waitForTimeout` here.
 - Don't assert permissions with `describe` — it's org-wide. Use `ui-api/object-info` via `orgAs`.
 - Don't assert field metadata through the UI. Wrong layer, 100× the cost, ambiguous failures.
 - Don't over-specify the contract. Pin what you depend on; labels are not a contract.
+- Don't hand-edit a generated snapshot to add another environment's entry — regenerate with
+  `ENVIRONMENT=<name> npm run sf:schemas`, which merges correctly instead of guessing the shape.
 
 ## Checklist
 

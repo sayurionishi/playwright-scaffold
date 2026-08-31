@@ -3,6 +3,7 @@ import { SalesforceApi } from '../../../enums/salesforce/salesforce-api';
 import { SObjects } from '../../../enums/salesforce/sobjects';
 import { salesforceConfig } from '../../../config/salesforce.config';
 import { VersionListSchema } from '../../../fixtures/salesforce/schemas/salesforce-common.schema';
+import type { ObjectSnapshot } from '../../../fixtures/salesforce/schemas/describe.schema';
 import {
   fetchDescribe,
   normalizeDescribe,
@@ -46,11 +47,20 @@ test.describe('Object metadata drift', () => {
    *
    * ⚠️ THIS SPEC IS INERT UNTIL YOU GENERATE SCHEMAS. Run:
    *     npm run sf:schemas -- Account Contact Opportunity
-   * then import the generated snapshot and add it to the list below. We deliberately ship no
+   * then import the generated snapshot map and add it to the list below. We deliberately ship no
    * committed snapshot: a snapshot is org-specific, and inventing one would violate rule #15.
+   *
+   * `snapshotByEnv` is keyed by ENVIRONMENT ('dev', 'staging', …) because dev and staging sandboxes
+   * routinely have genuinely different metadata shapes — an unrefreshed sandbox, a field that
+   * landed in dev but hasn't been deployed to staging yet. One snapshot per environment means
+   * running this against a different org never produces a false failure for a difference that was
+   * never real drift. See `docs/salesforce/TEST-ARCHITECTURE.md` §"Multi-environment".
    */
-  const OBJECTS_UNDER_CONTRACT: Array<{ name: string; snapshot: unknown }> = [
-    // { name: SObjects.ACCOUNT, snapshot: AccountSnapshot },   ← after running sf:schemas
+  const OBJECTS_UNDER_CONTRACT: Array<{
+    name: string;
+    snapshotByEnv: Partial<Record<string, ObjectSnapshot>>;
+  }> = [
+    // { name: SObjects.ACCOUNT, snapshotByEnv: AccountSnapshotByEnv },   ← after running sf:schemas
   ];
 
   test(
@@ -68,22 +78,49 @@ test.describe('Object metadata drift', () => {
     },
   );
 
+  /**
+   * The branch on "does a snapshot exist for this environment" happens HERE, at collection time —
+   * not inside a test body. `salesforceConfig.environment` is already resolved (dotenv loaded
+   * before any spec file is collected) and `snapshotByEnv` is a plain statically-imported object,
+   * so which of the two tests below gets registered is knowable up front. That keeps `--list`
+   * honest about real coverage and avoids a runtime conditional/conditional-expect in the test body.
+   */
   for (const target of OBJECTS_UNDER_CONTRACT) {
+    const expected = target.snapshotByEnv[salesforceConfig.environment];
+
+    if (expected === undefined) {
+      test(
+        `${target.name} has no committed snapshot for "${salesforceConfig.environment}"`,
+        { tag: '@contract' },
+        () => {
+          // An unconditional expect(), not a bare throw — a real assertion, so the failure reads
+          // like every other contract failure in this file rather than an uncaught exception.
+          expect(
+            false,
+            `No committed snapshot for ${target.name} in environment "${salesforceConfig.environment}". ` +
+              `Generate one: ENVIRONMENT=${salesforceConfig.environment} npm run sf:schemas -- ${target.name}`,
+          ).toBe(true);
+        },
+      );
+
+      continue;
+    }
+
     test(
-      `${target.name} metadata matches the committed snapshot`,
+      `${target.name} metadata matches the committed snapshot for ${salesforceConfig.environment}`,
       { tag: '@contract' },
       async ({ adminOrg }) => {
         const live = normalizeDescribe(await fetchDescribe(adminOrg, target.name));
-        const expected = target.snapshot as ReturnType<typeof normalizeDescribe>;
 
         // diffSnapshots so a failure names WHAT changed instead of dumping two large objects.
         const differences = diffSnapshots(expected, live);
         expect(
           differences,
-          `${target.name} metadata drifted:\n  ${differences.join('\n  ')}\n\n` +
+          `${target.name} metadata drifted in "${salesforceConfig.environment}":\n  ` +
+            `${differences.join('\n  ')}\n\n` +
             'Triage per the `salesforce-metadata-contract` skill. If the change was intended, ' +
             're-run `npm run sf:schemas` and review the diff like code. NEVER hand-edit the ' +
-            'generated schema to make this pass.',
+            'generated snapshot to make this pass.',
         ).toEqual([]);
       },
     );

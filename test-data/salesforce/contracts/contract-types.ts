@@ -102,6 +102,26 @@ export interface FieldAccessExpectation {
  *
  * `visibleFields` deserves special attention — see the doc comment on the property. It is the
  * strongest single assertion in this file.
+ *
+ * ── ONE ENVIRONMENT, BY DEFAULT ────────────────────────────────────────────────────────────────
+ * Everything below (`fields`, `crudByPersona`, `fieldAccessByPersona`, `visibleFieldsByPersona`)
+ * represents ONE environment's expected model — whichever org you wrote/generated it against. This
+ * is deliberate, not an oversight: env-keying every property here (the way the AUTO-GENERATED
+ * `describe` snapshot is env-keyed — see `scripts/generate-sobject-schemas.ts`) would add a
+ * `Record<string, X>` layer to every field of this interface, for the benefit of a divergence that
+ * usually SHOULDN'T exist — dev and staging permission models drifting is often itself a bug worth
+ * surfacing, not a difference to paper over.
+ *
+ * If your org's environments genuinely and intentionally diverge (a permission set only exists in
+ * staging while a rollout is in progress, say), the escape hatch is to maintain separate contract
+ * files and select one:
+ *
+ *   // account.contract.ts always exports the CURRENT environment's contract
+ *   export const AccountContract =
+ *     salesforceConfig.environment === 'staging' ? AccountContractStaging : AccountContractDev;
+ *
+ * Keep this the exception. If it becomes the rule, that is itself worth raising as an org hygiene
+ * problem — see `docs/salesforce/TEST-ARCHITECTURE.md` §"Multi-environment".
  */
 export interface ObjectContract {
   /** Object API name — from `describe`, never memory. */

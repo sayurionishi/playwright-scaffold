@@ -37,6 +37,21 @@ function resolveStrategy(): SalesforceAuthStrategy {
 
 export const salesforceConfig = {
   /**
+   * Active environment name — 'dev' | 'staging' | 'ci' | whatever `env/.env.<name>` you loaded.
+   *
+   * Mirrors the `ENVIRONMENT` constant `playwright.config.ts` uses to pick which `env/.env.<name>`
+   * file to load. That constant can't import THIS file (it needs to know which file to load before
+   * any of its variables exist), so it stays a raw inline read there — but everywhere else that
+   * runs AFTER dotenv has loaded (specs, helpers, scripts), read it from here so there is one
+   * definition of "what counts as the current environment."
+   *
+   * This is what makes per-environment snapshots and storage state possible: it's the key.
+   */
+  get environment(): string {
+    return process.env.ENVIRONMENT ?? 'dev';
+  },
+
+  /**
    * Pinned Salesforce API version, e.g. 'v62.0'.
    *
    * PIN IT and ASSERT IT. Salesforce ships three releases a year; leaving this unpinned lets the
@@ -140,9 +155,16 @@ export const salesforceConfig = {
     return required(envKey);
   },
 
-  /** Where a persona's authenticated storage state is written. */
+  /**
+   * Where a persona's authenticated storage state is written.
+   *
+   * Namespaced by environment (`.auth/<env>/sf-<persona>.json`), NOT just by persona. Without the
+   * environment segment, running against staging right after dev would either reuse a dev session
+   * (if the setup project were skipped) or silently overwrite it on the next setup run — and a dev
+   * session handed to a staging test fails in a way that looks like an auth bug, not an env mixup.
+   */
   storageStateFor(personaKey: string): string {
-    return `.auth/sf-${personaKey}.json`;
+    return `.auth/${salesforceConfig.environment}/sf-${personaKey}.json`;
   },
 
   /**

@@ -42,8 +42,12 @@ Read the chosen profile file; it specifies locator priority, wait notes, and aut
 Load the `salesforce` skill, then work through these in order. Ask; don't guess — every item here is org
 state you cannot read from a repo.
 
-1. **Org access.** Which org (scratch / Dev / Partial / Full sandbox / prod)? Recommend a scratch org per
-   CI run if the team can adopt it. Never bootstrap against production.
+1. **Org access.** Which org(s) (scratch / Dev / Partial / Full sandbox / prod)? Recommend a scratch org
+   per CI run if the team can adopt it. Never bootstrap against production. **Testing more than one
+   environment** (e.g. dev + staging)? Copy the `env/.env.salesforce.example` block into EACH
+   `env/.env.<environment>` file — storage state and the generated snapshot are already namespaced by
+   `ENVIRONMENT` with nothing extra to do; see `docs/salesforce/TEST-ARCHITECTURE.md` §"Multi-environment"
+   for what ISN'T automatic (the hand-authored contract/personas assume one environment's model).
 2. **Auth strategy** (`salesforce-auth`). `jwt` for CI needs a Connected App — that's a human-with-Setup
    task; hand them the 5 steps from the skill and confirm step 4 (app assigned to the test users'
    profile/permset) is done. `sfdx` is fine locally.

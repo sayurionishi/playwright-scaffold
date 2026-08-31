@@ -168,7 +168,66 @@ users often carry broad API grants nobody audits.
 
 ---
 
-## 6. Ratio guidance
+## 6. Multi-environment
+
+`ENVIRONMENT` (`env/.env.<name>`, same mechanism `playwright.config.ts` already uses) selects which
+org you're pointed at. Everything URL/credential-shaped follows it automatically — this section is
+about the two things that DON'T follow it for free, and the one thing that's deliberately left to you.
+
+### Automatic: storage state and the shape snapshot
+
+- **Storage state** — `.auth/<environment>/sf-<persona>.json`. Namespaced so a run against staging
+  never picks up a session `setup:salesforce` minted for dev (or the reverse). Nothing to configure;
+  `salesforceConfig.storageStateFor()` and `playwright.config.ts`'s `salesforce` project both read
+  the same `ENVIRONMENT`.
+- **The `describe`/drift snapshot** (`npm run sf:schemas`) — keyed by environment inside ONE file
+  per object (`AccountSnapshotByEnv = { dev: {...}, staging: {...} }`), because dev and staging
+  sandboxes routinely have different metadata shapes for reasons that aren't drift: an unrefreshed
+  sandbox, a field that landed in dev but hasn't deployed to staging yet. Regenerating one
+  environment's entry reads the file back and merges, so it never clobbers another environment's
+  already-committed shape:
+
+  ```bash
+  ENVIRONMENT=dev     npm run sf:schemas -- Account   # writes/updates the "dev" entry
+  ENVIRONMENT=staging npm run sf:schemas -- Account   # writes/updates "staging", "dev" untouched
+  ```
+
+  `metadata-drift.spec.ts` picks `snapshotByEnv[salesforceConfig.environment]` and fails with a
+  clear "no snapshot for this environment — run this command" message if that environment was never
+  generated, rather than a confusing drift dump comparing against nothing.
+
+### Deliberately NOT automatic: the hand-authored contract and personas
+
+`ObjectContract.fields` / `crudByPersona` / `fieldAccessByPersona` / `visibleFieldsByPersona`, and
+the persona/grant definitions in `personas.ts`, represent **one** environment's model by default —
+not env-keyed the way the generated snapshot is. Two reasons:
+
+1. Those structures are hand-maintained. Adding a `Record<string, X>` layer to every property would
+   tax the common single-environment case for a divergence most teams don't actually want.
+2. Permission-model divergence between dev and staging is often itself a bug worth surfacing (a
+   permission set present in dev and forgotten in staging), not a difference to quietly paper over
+   with two parallel "correct" contracts.
+
+If your org's environments genuinely and intentionally diverge (a permission set exists only in
+staging during a rollout, say), the escape hatch is a small selector, not restructuring the type:
+
+```ts
+export const AccountContract =
+  salesforceConfig.environment === 'staging' ? AccountContractStaging : AccountContractDev;
+```
+
+Keep this the exception. If most objects need it, that's worth raising as an org hygiene question,
+not just absorbing into more test-suite complexity.
+
+### Session caching is safe across this without changes
+
+`getOrgSession`'s cache is keyed by persona only, not by environment — and that's fine: `ENVIRONMENT`
+is resolved once via `dotenv.config()` before any other code in the process runs, so a single process
+only ever talks to one environment. There's no "switch mid-run" case here to guard against.
+
+---
+
+## 7. Ratio guidance
 
 Cost per test differs by roughly two orders of magnitude, so the shape follows:
 
@@ -184,33 +243,39 @@ layer.
 
 ---
 
-## 7. Anti-patterns
+## 8. Anti-patterns
 
-| Anti-pattern                                  | Why it's wrong                                                    |
-| --------------------------------------------- | ----------------------------------------------------------------- |
-| UI tests running as System Admin              | Tests a screen no user sees; bypasses sharing and FLS             |
-| Teardown as the subject persona               | No Delete → silent cleanup failure → leaked data                  |
-| An admin as the positive control              | Passes via Modify All Data even with the permset broken           |
-| Absence assertion with no control             | Passes when the locator is wrong — a false green about _security_ |
-| A persona × field matrix in the UI            | 20 minutes and flaky for what one API call does in seconds        |
-| Asserting picklist values through the browser | Slow, covers one field, breaks on locator change                  |
-| `permissionSets` asserted as "contains"       | Misses privilege escalation, the dangerous direction              |
-| Field-by-field FLS with no exact-set check    | Misses newly-added fields — how leaks ship                        |
-| Testing that a Lightning list view sorts      | That's Salesforce's test, not yours                               |
-| Loosening a schema to green a contract test   | Deletes the only signal you had (rules #7, #13)                   |
-| Hardcoding a record Id                        | Org-specific; sandbox refreshes change them                       |
-| Retrying a governor-limit failure             | It's a bug in the code under test                                 |
+| Anti-pattern                                   | Why it's wrong                                                    |
+| ---------------------------------------------- | ----------------------------------------------------------------- |
+| UI tests running as System Admin               | Tests a screen no user sees; bypasses sharing and FLS             |
+| Teardown as the subject persona                | No Delete → silent cleanup failure → leaked data                  |
+| An admin as the positive control               | Passes via Modify All Data even with the permset broken           |
+| Absence assertion with no control              | Passes when the locator is wrong — a false green about _security_ |
+| A persona × field matrix in the UI             | 20 minutes and flaky for what one API call does in seconds        |
+| Asserting picklist values through the browser  | Slow, covers one field, breaks on locator change                  |
+| `permissionSets` asserted as "contains"        | Misses privilege escalation, the dangerous direction              |
+| Field-by-field FLS with no exact-set check     | Misses newly-added fields — how leaks ship                        |
+| Testing that a Lightning list view sorts       | That's Salesforce's test, not yours                               |
+| Loosening a schema to green a contract test    | Deletes the only signal you had (rules #7, #13)                   |
+| Hardcoding a record Id                         | Org-specific; sandbox refreshes change them                       |
+| Retrying a governor-limit failure              | It's a bug in the code under test                                 |
+| One committed `describe` snapshot for all envs | Dev/staging shape differences read as false drift                 |
+| Hand-editing a generated snapshot/schema file  | Silently defeats drift detection — regenerate instead             |
 
 ---
 
-## 8. Commands
+## 9. Commands
 
 ```bash
 npm run test:contract     # @contract — shape + version pin  (org project, no browser)
 npm run test:personas     # @persona  — grants, CRUD, FLS, visible-field sets
 npm run test:salesforce   # UI behaviour as the subject persona
-npm run sf:schemas -- Account Opportunity         # regenerate shape snapshots
+npm run sf:schemas -- Account Opportunity         # regenerate THIS environment's shape snapshot
 npm run sf:visible-fields -- Account Opportunity  # regenerate per-persona visible-field sets
+
+# Add another environment's snapshot entry without touching the current one's:
+ENVIRONMENT=staging npm run sf:schemas -- Account Opportunity
 ```
 
-Both generators write output you **review like code and commit**. The diff is the drift report.
+Both generators write output you **review like code and commit**. The diff is the drift report — and
+for `sf:schemas`, the diff should only ever touch the environment you just ran it against (§6).

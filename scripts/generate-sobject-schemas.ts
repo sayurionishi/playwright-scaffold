@@ -21,18 +21,42 @@
 
 import fs from 'node:fs';
 import path from 'node:path';
+import { pathToFileURL } from 'node:url';
 import dotenv from 'dotenv';
+import { format as prettierFormat, resolveConfig as resolvePrettierConfig } from 'prettier';
 import { request as playwrightRequest } from '@playwright/test';
 import { ApiRequest } from '../fixtures/api/api-request';
 import { getOrgSession, authHeaders } from '../helpers/salesforce/auth';
 import { fetchDescribe, normalizeDescribe } from '../helpers/salesforce/describe';
-import type { DescribeField } from '../fixtures/salesforce/schemas/describe.schema';
+import type { DescribeField, ObjectSnapshot } from '../fixtures/salesforce/schemas/describe.schema';
 import { salesforceConfig } from '../config/salesforce.config';
 
+// This must stay a raw inline read, matching playwright.config.ts: it decides which env/.env.<name>
+// file to load, so it can't itself depend on salesforceConfig (which needs that file loaded first).
 const ENVIRONMENT = process.env.ENVIRONMENT ?? 'dev';
 dotenv.config({ path: path.resolve(process.cwd(), `env/.env.${ENVIRONMENT}`) });
 
 const OUTPUT_DIR = path.resolve(process.cwd(), 'fixtures/salesforce/schemas/generated');
+
+/**
+ * Run generated source through the project's own Prettier config before writing it.
+ *
+ * Avoids hand-rolled indentation logic for the generated object literals (`JSON.stringify` alone
+ * produces valid but not necessarily project-styled TS) — Prettier does the reformatting correctly
+ * regardless of nesting depth, and the output matches whatever a human-authored file would look
+ * like, which is what `lint-staged`/CI expect anyway.
+ *
+ * ⚠️ `resolveConfig` needs a FILE path to search upward from, not a bare directory — verified
+ * directly: `resolveConfig(process.cwd())` silently returns `null` (so every generated file quietly
+ * fell back to Prettier's un-configured defaults, e.g. double quotes instead of this project's
+ * `singleQuote: true`), while `resolveConfig(path.join(process.cwd(), 'x.ts'))` finds
+ * `.prettierrc.json` correctly. Pass the REAL target path so config lookup also respects any
+ * nested/per-directory Prettier overrides, not just the repo root.
+ */
+export async function formatGenerated(source: string, targetPath: string): Promise<string> {
+  const config = await resolvePrettierConfig(targetPath);
+  return prettierFormat(source, { ...config, parser: 'typescript' });
+}
 
 /** Quote a string for embedding in generated TypeScript. */
 function quote(value: string): string {
@@ -105,7 +129,7 @@ function zodForField(field: DescribeField): string {
   return expression;
 }
 
-function generateSchemaFile(objectApiName: string, fields: DescribeField[]): string {
+export function generateSchemaFile(objectApiName: string, fields: DescribeField[]): string {
   const lines = fields
     .slice()
     .sort((a, b) => a.name.localeCompare(b.name))
@@ -152,17 +176,96 @@ export function ${objectApiName}RecordSchema<T extends z.ZodRawShape>(fields: z.
 `;
 }
 
-function generateSnapshotFile(objectApiName: string, snapshot: unknown): string {
+/**
+ * Read the CURRENTLY COMMITTED snapshot map out of a previously generated file, so regenerating one
+ * environment's entry doesn't clobber every other environment's.
+ *
+ * The script runs under `tsx`, whose whole job is executing TypeScript directly — so this dynamic
+ * `import()` of a generated `.ts` file works exactly like `import()` of any other module, no special
+ * loader needed. A `file://` URL is used (via `pathToFileURL`) because a bare absolute filesystem
+ * path is not a valid ESM import specifier on every platform (notably Windows).
+ *
+ * ⚠️ CACHE-BUSTED ON PURPOSE. Node's ESM loader caches a module by its resolved URL for the life of
+ * the process, so importing the SAME path twice returns the FIRST result even after the file on
+ * disk changed — verified directly: a harness that wrote "dev", read it back, then wrote "staging"
+ * merged with it, got back only "dev" on the next read without this. A `?t=` query param makes each
+ * call a distinct specifier, forcing a real re-read. Harmless overhead — this only ever runs a
+ * handful of times per script invocation.
+ */
+export async function loadExistingSnapshotMap(
+  snapshotPath: string,
+  exportName: string,
+): Promise<Partial<Record<string, ObjectSnapshot>>> {
+  if (!fs.existsSync(snapshotPath)) return {};
+  try {
+    const moduleUrl = `${pathToFileURL(snapshotPath).href}?t=${process.hrtime.bigint()}`;
+    const loaded = (await import(moduleUrl)) as Record<string, unknown>;
+    const existing = loaded[exportName];
+    return typeof existing === 'object' && existing !== null
+      ? (existing as Partial<Record<string, ObjectSnapshot>>)
+      : {};
+  } catch (error) {
+    console.warn(
+      `⚠️  Could not read the existing snapshot at ${path.relative(process.cwd(), snapshotPath)} to ` +
+        `merge environments (${error instanceof Error ? error.message : String(error)}). Starting ` +
+        'fresh — any OTHER environments already committed there will be OVERWRITTEN. Review the ' +
+        'diff carefully before committing.',
+    );
+    return {};
+  }
+}
+
+/**
+ * Generate the snapshot file's source, MERGING this environment's fresh snapshot into whatever was
+ * already committed for other environments.
+ *
+ * ─────────────────────────────────────────────────────────────────────────────────────────────
+ * WHY THIS IS KEYED BY ENVIRONMENT
+ *
+ * Dev and staging sandboxes routinely have different metadata shapes — an unrefreshed sandbox, a
+ * field that landed in dev but hasn't been deployed to staging yet, a picklist value added in one
+ * org only. A single committed snapshot per OBJECT would make the drift test fail on one of your
+ * environments no matter which one you generated it from — a false failure, not real drift.
+ *
+ * Keying by environment means regenerating dev's entry never touches staging's, and the drift test
+ * always compares each environment against ITS OWN last-known-good shape.
+ * ─────────────────────────────────────────────────────────────────────────────────────────────
+ */
+export function generateSnapshotFile(
+  objectApiName: string,
+  environment: string,
+  snapshotForThisEnv: ObjectSnapshot,
+  existingByEnv: Partial<Record<string, ObjectSnapshot>>,
+): string {
+  const merged = { ...existingByEnv, [environment]: snapshotForThisEnv };
+  const sortedEntries = Object.keys(merged)
+    .sort()
+    .map((env) => `  ${JSON.stringify(env)}: ${JSON.stringify(merged[env])},`)
+    .join('\n');
+
   return `// GENERATED FILE — do not edit by hand.
 //
-// Regenerate with:  npm run sf:schemas -- ${objectApiName}
+// Regenerate ONLY the current environment's entry with:
+//   ENVIRONMENT=${environment} npm run sf:schemas -- ${objectApiName}
+// (ENVIRONMENT defaults to 'dev' if unset — see env/.env.<environment>.)
 //
-// The normalized metadata snapshot the @contract drift test compares the live org against.
-// See tests/salesforce/metadata-contract.spec.ts and the \`salesforce-metadata-contract\` skill.
+// This file is READ BACK AND MERGED on every run (see loadExistingSnapshotMap in
+// scripts/generate-sobject-schemas.ts), so regenerating one environment's entry never overwrites
+// another's. Committed environments here: ${Object.keys(merged).sort().join(', ')}.
+//
+// The normalized metadata snapshot the @contract drift test compares the live org against, one
+// entry per environment. See tests/salesforce/contract/metadata-drift.spec.ts and the
+// \`salesforce-metadata-contract\` skill.
+//
+// A \`git diff\` after regenerating is your metadata-drift report FOR THAT ENVIRONMENT. If the
+// @contract test fails, DO NOT hand-edit this file to make it pass — triage the change per the
+// \`salesforce-metadata-contract\` skill.
 
 import type { ObjectSnapshot } from '../describe.schema';
 
-export const ${objectApiName}Snapshot: ObjectSnapshot = ${JSON.stringify(snapshot, null, 2)} as const;
+export const ${objectApiName}SnapshotByEnv: Partial<Record<string, ObjectSnapshot>> = {
+${sortedEntries}
+};
 `;
 }
 
@@ -195,29 +298,50 @@ async function main(): Promise<void> {
 
     for (const objectApiName of objectNames) {
       const describe = await fetchDescribe(org, objectApiName);
-      const snapshot = normalizeDescribe(describe);
+      const snapshotForThisEnv = normalizeDescribe(describe);
 
       const schemaPath = path.join(OUTPUT_DIR, `${objectApiName.toLowerCase()}.schema.ts`);
       const snapshotPath = path.join(OUTPUT_DIR, `${objectApiName.toLowerCase()}.snapshot.ts`);
+      const exportName = `${objectApiName}SnapshotByEnv`;
 
-      fs.writeFileSync(schemaPath, generateSchemaFile(objectApiName, describe.fields), 'utf8');
-      fs.writeFileSync(snapshotPath, generateSnapshotFile(objectApiName, snapshot), 'utf8');
+      // Read what's already committed for OTHER environments before overwriting the file.
+      const existingByEnv = await loadExistingSnapshotMap(snapshotPath, exportName);
 
+      const schemaSource = await formatGenerated(
+        generateSchemaFile(objectApiName, describe.fields),
+        schemaPath,
+      );
+      const snapshotSource = await formatGenerated(
+        generateSnapshotFile(objectApiName, ENVIRONMENT, snapshotForThisEnv, existingByEnv),
+        snapshotPath,
+      );
+
+      fs.writeFileSync(schemaPath, schemaSource, 'utf8');
+      fs.writeFileSync(snapshotPath, snapshotSource, 'utf8');
+
+      const envCount = new Set([...Object.keys(existingByEnv), ENVIRONMENT]).size;
       console.warn(
-        `✓ ${objectApiName}: ${describe.fields.length} fields → ` +
-          `${path.relative(process.cwd(), schemaPath)} + snapshot`,
+        `✓ ${objectApiName} [${ENVIRONMENT}]: ${describe.fields.length} fields → ` +
+          `${path.relative(process.cwd(), schemaPath)} + snapshot (${envCount} environment(s) committed)`,
       );
     }
 
     console.warn(
-      '\nReview the diff like code, then COMMIT the generated files — they are your drift snapshot.',
+      `\nReview the diff like code, then COMMIT the generated files — they are your drift snapshot ` +
+        `for "${ENVIRONMENT}". Run again with ENVIRONMENT=<other> to add another environment's entry.`,
     );
   } finally {
     await context.dispose();
   }
 }
 
-main().catch((error: unknown) => {
-  console.error(error instanceof Error ? error.message : String(error));
-  process.exit(1);
-});
+// Only run as the CLI entry point — guarded so the pure functions above can be imported and
+// exercised directly (e.g. by a script validating the merge logic) without triggering a live run.
+const isMainModule =
+  process.argv[1] !== undefined && import.meta.url === pathToFileURL(process.argv[1]).href;
+if (isMainModule) {
+  main().catch((error: unknown) => {
+    console.error(error instanceof Error ? error.message : String(error));
+    process.exit(1);
+  });
+}

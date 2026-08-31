@@ -78,13 +78,14 @@ these patterns need translating — that's a real change, not a tweak.
 
 ## 5. Metadata & contract — FILL IN
 
-| #   | Item                                                                              | Action                                                                               |
-| --- | --------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
-| 5.1 | **No schemas are generated yet**                                                  | `npm run sf:schemas -- Account Contact Opportunity` (plus your objects), then commit |
-| 5.2 | `OBJECTS_UNDER_CONTRACT` in `tests/salesforce/metadata-contract.spec.ts` is empty | Register the generated snapshots. A guard test fails until you do.                   |
-| 5.3 | `SF_API_VERSION` default is `v62.0` — **almost certainly not what you want**      | Set it to a version your org supports; `test:contract` asserts it                    |
-| 5.4 | Managed-package namespaces                                                        | Never hardcode. Resolve from `describe`.                                             |
-| 5.5 | Snapshots are per-org-shape                                                       | A Full sandbox and a scratch org legitimately differ. Keep separate snapshots if so. |
+| #   | Item                                                                                                                                                      | Action                                                                                                                                                                                                                                                                     |
+| --- | --------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 5.1 | **No schemas are generated yet**                                                                                                                          | `npm run sf:schemas -- Account Contact Opportunity` (plus your objects), then commit                                                                                                                                                                                       |
+| 5.2 | `OBJECTS_UNDER_CONTRACT` in `tests/salesforce/contract/metadata-drift.spec.ts` is empty                                                                   | Register the generated `<Object>SnapshotByEnv` maps. A guard test fails until you do.                                                                                                                                                                                      |
+| 5.3 | `SF_API_VERSION` default is `v62.0` — **almost certainly not what you want**                                                                              | Set it to a version your org supports; `test:contract` asserts it                                                                                                                                                                                                          |
+| 5.4 | Managed-package namespaces                                                                                                                                | Never hardcode. Resolve from `describe`.                                                                                                                                                                                                                                   |
+| 5.5 | Testing more than one environment/org                                                                                                                     | Already handled: `npm run sf:schemas` keys the committed snapshot BY ENVIRONMENT and merges rather than overwrites. Run it once per environment (`ENVIRONMENT=staging npm run sf:schemas -- Account`) — nothing else to do. See `docs/salesforce/TEST-ARCHITECTURE.md` §6. |
+| 5.6 | `.auth/<env>/` and the generated schema/snapshot files are per-environment, but `test-data/salesforce/contracts/*.contract.ts` (CRUD/FLS/personas) is NOT | That file represents one environment's permission model by default. If yours genuinely diverge across environments, see the escape hatch in `contract-types.ts`'s doc comment.                                                                                             |
 
 ## 6. Personas — FILL IN
 
@@ -110,12 +111,13 @@ these patterns need translating — that's a real change, not a tweak.
 
 ## 8. Environment — CHECK
 
-| #   | Item                                                                           | Notes                                                    |
-| --- | ------------------------------------------------------------------------------ | -------------------------------------------------------- |
-| 8.1 | `BASE_URL` is your **Lightning** host, with no path segment                    | A path here breaks `goto('/')`                           |
-| 8.2 | The API instance host is **not** configured — it comes from the token response | Correct by design; don't add an env var for it           |
-| 8.3 | `SF_USERNAME_SUFFIX` set after a sandbox refresh                               | Refresh appends the sandbox name to every username       |
-| 8.4 | Never point this at production                                                 | If forced to, `@destructive`-tag every write and gate it |
+| #   | Item                                                                           | Notes                                                                                                                                                                                               |
+| --- | ------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 8.1 | `BASE_URL` is your **Lightning** host, with no path segment                    | A path here breaks `goto('/')`                                                                                                                                                                      |
+| 8.2 | The API instance host is **not** configured — it comes from the token response | Correct by design; don't add an env var for it                                                                                                                                                      |
+| 8.3 | `SF_USERNAME_SUFFIX` set after a sandbox refresh                               | Refresh appends the sandbox name to every username                                                                                                                                                  |
+| 8.4 | Never point this at production                                                 | If forced to, `@destructive`-tag every write and gate it                                                                                                                                            |
+| 8.5 | Testing multiple environments (dev, staging, …)                                | `env/.env.salesforce.example`'s content needs merging into EACH `env/.env.<environment>` file you use — values differ per org even though the variable names stay the same. See its header comment. |
 
 ---
 

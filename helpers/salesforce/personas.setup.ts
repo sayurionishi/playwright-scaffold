@@ -1,3 +1,5 @@
+import fs from 'node:fs';
+import path from 'node:path';
 import { test as setup, expect } from '@playwright/test';
 import { getOrgSession, applySession } from './auth';
 import { salesforceConfig } from '../../config/salesforce.config';
@@ -5,11 +7,14 @@ import { UI_PERSONAS } from '../../test-data/salesforce/personas';
 import { LightningRoutes } from '../../enums/salesforce/lightning-routes';
 
 /**
- * Salesforce auth setup — one authenticated storageState PER PERSONA.
+ * Salesforce auth setup — one authenticated storageState PER PERSONA, PER ENVIRONMENT.
  *
  * Runs in the `setup:salesforce` project before any UI project. Each persona's state lands at
- * `.auth/sf-<key>.json`, and UI tests either use the project default or ask for a specific persona
- * via the `asPersona` fixture.
+ * `.auth/<environment>/sf-<key>.json`, and UI tests either use the project default or ask for a
+ * specific persona via the `asPersona` fixture. The environment segment matters: run this against
+ * dev, then again against staging without it, and the second run would silently overwrite the
+ * first's state (or a stale dev session would get handed to a staging test) rather than each
+ * environment keeping its own.
  *
  * No login form is driven here. We mint a session over the API (JWT bearer flow — MFA-exempt by
  * design) and inject it into a browser context. See the `salesforce-auth` skill.
@@ -48,7 +53,12 @@ for (const persona of UI_PERSONAS) {
           'as an authenticated user. See docs/salesforce/VERIFY-BEFORE-FIRST-RUN.md.',
       ).toBeVisible({ timeout: 30_000 });
 
-      await context.storageState({ path: salesforceConfig.storageStateFor(persona.key) });
+      const statePath = salesforceConfig.storageStateFor(persona.key);
+      // `context.storageState()` does not create parent directories on its own — without this,
+      // the FIRST run against a new environment fails on an ENOENT for `.auth/<env>/`, which reads
+      // like a permissions bug rather than "this is a new environment directory".
+      fs.mkdirSync(path.dirname(statePath), { recursive: true });
+      await context.storageState({ path: statePath });
     } finally {
       await context.close();
     }

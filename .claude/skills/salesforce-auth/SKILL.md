@@ -112,11 +112,15 @@ for (const persona of PERSONAS) {
 }
 ```
 
-Each persona's state lands at `.auth/sf-<persona>.json`. UI projects declare which one they default to;
-a test needing a different persona uses the `asPersona` fixture.
+Each persona's state lands at `.auth/<environment>/sf-<persona>.json`. UI projects declare which one
+they default to; a test needing a different persona uses the `asPersona` fixture.
 
-Two details that matter:
+Three details that matter:
 
+- **The path is namespaced by `ENVIRONMENT`, not just by persona.** Run this against dev, then
+  staging, and each keeps its own state — without the environment segment, the second run would
+  either silently overwrite the first's file or (worse) a stale dev session would get handed to a
+  staging test, which fails in a way that looks like an auth bug rather than an environment mixup.
 - **The fan-out iterates `UI_PERSONAS`, not all of them.** An API-only identity (`uiCapable: false`,
   e.g. an integration user) has no UI licence, so building a browser session for it fails for a
   perfectly correct reason and would block the whole run.

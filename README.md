@@ -97,12 +97,12 @@ Based on your answers, it picks a **profile** that tunes the defaults to your ta
 you don't need, and writes `PROJECT.md`. Every later task reads that file, so the scaffold stops
 being generic and starts being yours.
 
-| Profile      | What it changes                                                                  |
-| ------------ | -------------------------------------------------------------------------------- |
-| `generic`    | Playwright's official locator order (role → label → text → testId). The default. |
-| `controlled` | You can add `data-testid` → testId-first locators. Most stable.                  |
-| `salesforce` | Lightning anti-flake rules; never trusts hashed ids/classes.                     |
-| `api-only`   | Prunes the UI projects (and may suggest a backend-native tool instead).          |
+| Profile      | What it changes                                                                                                    |
+| ------------ | ------------------------------------------------------------------------------------------------------------------ |
+| `generic`    | Playwright's official locator order (role → label → text → testId). The default.                                   |
+| `controlled` | You can add `data-testid` → testId-first locators. Most stable.                                                    |
+| `salesforce` | Activates the **Salesforce pack** — 6 extra skills plus org auth, personas, and metadata-contract code. See below. |
+| `api-only`   | Prunes the UI projects (and may suggest a backend-native tool instead).                                            |
 
 After bootstrap, just describe work in plain language — _"add a page object for the settings page"_,
 _"add API tests for `POST /orders`"_ — and the assistant routes, explores, proposes, and (on
@@ -112,18 +112,88 @@ approval) writes tests that follow the conventions.
 
 ---
 
+## The Salesforce pack
+
+Salesforce isn't "a web app you test" — it's a platform where **your configuration is the system under
+test** and most of the UI is generated. So the `salesforce` profile is more than a locator preference:
+
+**Six extra skills** — `salesforce` (the hub: what to test and, importantly, what _not_ to),
+`salesforce-auth`, `salesforce-locators`, `salesforce-waits`, `salesforce-personas`,
+`salesforce-metadata-contract`, `salesforce-data`.
+
+**Four things that genuinely differ from every other profile:**
+
+1. **Two identities, not one.** `adminOrg` (System Admin) arranges and tears down; the subject persona
+   acts and asserts. Arrange as a restricted user and teardown silently can't delete, so data leaks.
+   Assert as an admin and Modify All Data bypasses sharing _and_ FLS, so the test passes with the
+   permission model completely broken. UI projects default to `standardUser`, never admin.
+2. **Auth is org auth, not a login form.** The JWT bearer flow mints a session without touching the
+   login UI — which is also how you legitimately get past mandatory MFA. One `storageState` per
+   UI-capable persona. Never automate an MFA challenge.
+3. **The API contract is org metadata.** Salesforce ships no OpenAPI, and `describe` changes the
+   moment an admin clicks Save — no deploy, no PR, no notification. `npm run sf:schemas` generates
+   Zod schemas from the org and commits them as a snapshot, so an admin marking a field required
+   fails **one** named `@contract` test instead of forty UI tests tomorrow morning.
+4. **Every assertion has a "for whom".** The permission model is usually the actual deliverable, so
+   personas form a **lattice** — nine of them, each differing from its neighbour on exactly one axis
+   (CRUD, FLS, sharing, UI-capability), so a failing matrix cell tells you which axis broke.
+
+**Layering is explicit** — see `docs/salesforce/TEST-ARCHITECTURE.md`:
+
+| Layer        | Project            | Asserts                                                                                                                                                                     |
+| ------------ | ------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Contract** | `org` (no browser) | field types, lengths, nillable, **picklist values**, reference targets, record types, **permission-set grants**, object CRUD, per-persona **FLS**, exact visible-field sets |
+| **UI**       | `salesforce`       | **behaviour only** — workflows, persistence, and whether the screen _honours_ the model above                                                                               |
+
+That split is the point. "The Stage picklist offers six values" through a browser costs ~20s, needs a
+session, breaks on a locator change, and covers one field; at the contract layer it's one API call
+covering every field. And UI absence is ambiguous — FLS, page layout, record type, and a collapsed
+section all look identical — where the API tells you which.
+
+Three assertions worth calling out:
+
+- **Grants, not just effects.** `object-info` says a persona can't edit a field; it doesn't say why.
+  Asserting `PermissionSetAssignment` **exactly** turns "six FLS tests went red mysteriously" into
+  "this permission set was unassigned" — and an _extra_ set is privilege escalation, which a
+  "contains" check misses.
+- **No sharing bypass.** `ViewAllRecords`/`ModifyAllRecords` on a non-admin silently defeats the whole
+  sharing model while every sharing test still passes. Highest-severity misconfiguration in Salesforce;
+  almost nobody tests for it.
+- **Exact visible-field sets.** Field-by-field FLS only covers fields you thought to list, so a newly
+  added field that defaults to visible leaks silently. An exact-set assertion fails on it immediately.
+
+Plus a Lightning component-object library (combobox, datatable, modal, toast, record page, list view)
+that encodes the traps: comboboxes aren't `<select>`s, inputs commit on blur, `/aura` can't be waited
+on by URL, and the highlights panel duplicates every detail field value.
+
+**Before your first run:** work through `docs/salesforce/VERIFY-BEFORE-FIRST-RUN.md`. The pack ships
+patterns that are correct in general and depend on your org's configuration — that document is the
+honest list of what to confirm once.
+
+```bash
+npm run sf:schemas -- Account Contact Opportunity   # generate + commit the shape snapshot
+npm run sf:visible-fields -- Account                # per-persona visible-field sets (leak detection)
+npm run test:contract                               # shape, drift, API version pin
+npm run test:personas                               # grants, CRUD, FLS, visible-field sets
+npm run test:salesforce                             # Lightning UI behaviour, as the subject persona
+```
+
+---
+
 ## Running tests
 
-| Command                                                 | Runs                                          |
-| ------------------------------------------------------- | --------------------------------------------- |
-| `npm run test:api`                                      | the `api` project (backend = SUT, no browser) |
-| `npm run test:functional` / `:e2e`                      | UI projects                                   |
-| `npm run test:smoke` / `:sanity` / `:regression`        | by tag                                        |
-| `npm run test:security`                                 | the `@security` fuzzing subset                |
-| `npm run test:ui` / `:debug` / `:headed`                | interactive debugging                         |
-| `npm run test:ci`                                       | replay CI conditions locally                  |
-| `npm run lint` · `npm run typecheck` · `npm run format` | quality gates                                 |
-| `npm test`                                              | everything except `@destructive`              |
+| Command                                                 | Runs                                                          |
+| ------------------------------------------------------- | ------------------------------------------------------------- |
+| `npm run test:api`                                      | the `api` project (backend = SUT, no browser)                 |
+| `npm run test:functional` / `:e2e`                      | UI projects                                                   |
+| `npm run test:smoke` / `:sanity` / `:regression`        | by tag                                                        |
+| `npm run test:security`                                 | the `@security` fuzzing subset                                |
+| `npm run test:contract` / `:personas` / `:salesforce`   | Salesforce pack (metadata drift · permissions · Lightning UI) |
+| `npm run sf:schemas -- <Object>...`                     | generate Zod schemas from a Salesforce org's `describe`       |
+| `npm run test:ui` / `:debug` / `:headed`                | interactive debugging                                         |
+| `npm run test:ci`                                       | replay CI conditions locally                                  |
+| `npm run lint` · `npm run typecheck` · `npm run format` | quality gates                                                 |
+| `npm test`                                              | everything except `@destructive`                              |
 
 ---
 

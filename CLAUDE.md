@@ -20,30 +20,39 @@ against an unconfigured scaffold.
 If `PROJECT.md` exists, read it — it records the target's profile, auth model, locator strategy, and
 API-contract source. Those decisions override the generic defaults below.
 
+If the recorded profile is **`salesforce`**, also load the `salesforce` skill before doing anything
+else Salesforce-specific — the pack (§7) replaces several generic defaults outright.
+
 ---
 
 ## 1. The Constitution (hard stops — these are REFUSALS, not warnings)
 
 Never ship, and refuse to generate, any of the following:
 
-| #   | Forbidden                                                                     | Instead                                                                                                                                                                    |
-| --- | ----------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 1   | `page.waitForTimeout(...)`                                                    | Web-first assertion or a pre-registered response wait (`wait-strategy`)                                                                                                    |
-| 2   | `page.waitForLoadState('networkidle')` **on an SPA**                          | The specific gating response (`helpers/util/network.ts`). Acceptable ONLY on static/SSR pages that truly go quiet — never on a chatty SPA/Salesforce. See `wait-strategy`. |
-| 3   | XPath, CSS-class, nth-child, or auto-generated-id selectors                   | Semantic / testId per the active profile (`selectors`)                                                                                                                     |
-| 4   | A guessed selector, URL, enum value, endpoint, or UI string                   | **Explore first** (playwright-cli / OpenAPI) or **ASK**. Never invent.                                                                                                     |
-| 5   | `any` type                                                                    | A real type or `unknown` + narrowing (`type-safety`)                                                                                                                       |
-| 6   | `z.object(...)` for an API schema                                             | `z.strictObject(...)` (catches contract drift)                                                                                                                             |
-| 7   | Skipping `expect(Schema.parse(body))` / `{ schema }` on an API response       | Validate every response body                                                                                                                                               |
-| 8   | Assertions inside a page object                                               | Page objects act; specs assert                                                                                                                                             |
-| 9   | Raw locators in a spec                                                        | Locators live in page objects only                                                                                                                                         |
-| 10  | `new SomePage(page)` inside a test                                            | Consume via the fixture (`async ({ somePage }) => …`)                                                                                                                      |
-| 11  | Hardcoded URL / credential                                                    | `process.env.*` via `config/`; paths & messages via `enums/`                                                                                                               |
-| 12  | `.json` static data                                                           | `.ts` with `as const`                                                                                                                                                      |
-| 13  | Silencing a failure (`try/catch` on `expect`, raised timeout, silent `.skip`) | Fix the root cause; `test.skip` requires `// FIXME: <ticket>`                                                                                                              |
-| 14  | More than one tag per test                                                    | Exactly one (`@smoke`/`@sanity`/`@regression`/`@api`/`@e2e`/`@security`); `@destructive` wins                                                                              |
+| #   | Forbidden                                                                     | Instead                                                                                                                                                                                                                                                               |
+| --- | ----------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | `page.waitForTimeout(...)`                                                    | Web-first assertion or a pre-registered response wait (`wait-strategy`)                                                                                                                                                                                               |
+| 2   | `page.waitForLoadState('networkidle')` **on an SPA**                          | The specific gating response (`helpers/util/network.ts`). Acceptable ONLY on static/SSR pages that truly go quiet — never on a chatty SPA. **On the `salesforce` profile this is a hard REFUSAL, not a discouragement** (Aura never goes quiet). See `wait-strategy`. |
+| 3   | XPath, CSS-class, nth-child, or auto-generated-id selectors                   | Semantic / testId per the active profile (`selectors`)                                                                                                                                                                                                                |
+| 4   | A guessed selector, URL, enum value, endpoint, or UI string                   | **Explore first** (playwright-cli / OpenAPI) or **ASK**. Never invent.                                                                                                                                                                                                |
+| 5   | `any` type                                                                    | A real type or `unknown` + narrowing (`type-safety`)                                                                                                                                                                                                                  |
+| 6   | `z.object(...)` for an API schema                                             | `z.strictObject(...)` (catches contract drift)                                                                                                                                                                                                                        |
+| 7   | Skipping `expect(Schema.parse(body))` / `{ schema }` on an API response       | Validate every response body                                                                                                                                                                                                                                          |
+| 8   | Assertions inside a page object                                               | Page objects act; specs assert                                                                                                                                                                                                                                        |
+| 9   | Raw locators in a spec                                                        | Locators live in page objects only                                                                                                                                                                                                                                    |
+| 10  | `new SomePage(page)` inside a test                                            | Consume via the fixture (`async ({ somePage }) => …`)                                                                                                                                                                                                                 |
+| 11  | Hardcoded URL / credential                                                    | `process.env.*` via `config/`; paths & messages via `enums/`                                                                                                                                                                                                          |
+| 12  | `.json` static data                                                           | `.ts` with `as const`                                                                                                                                                                                                                                                 |
+| 13  | Silencing a failure (`try/catch` on `expect`, raised timeout, silent `.skip`) | Fix the root cause; `test.skip` requires `// FIXME: <ticket>`                                                                                                                                                                                                         |
+| 14  | More than one tag per test                                                    | Exactly one (`@smoke`/`@sanity`/`@regression`/`@api`/`@e2e`/`@security`/`@contract`/`@persona`); `@destructive` wins                                                                                                                                                  |
+| 15  | A Salesforce object or field API name written from memory                     | Read it from `describe` / `ui-api/object-info` (`salesforce-metadata-contract`)                                                                                                                                                                                       |
 
 A hook (ESLint) enforces #1, #2, #5. The rest are on you.
+
+Rule #15 is the Salesforce-specific sharpening of #4, and it earns its own row because Salesforce field
+API names are **org state, not application source**. An admin can add, rename, or delete a field with no
+deploy and no commit, so there is no repository to read them from — `describe` is the only source of
+truth. `Margin__c` existing in someone else's org proves nothing about yours.
 
 ---
 
@@ -105,6 +114,21 @@ API-as-setup is a fixture inside UI tests; API-as-SUT is the `api` project.
 | "How do I…" / "generate a prompt for…"       | `common-tasks`       | the matching skill                                          |
 | Understand the whole way of working          | `ai-native-workflow` | —                                                           |
 
+### Salesforce (only when `PROJECT.md` profile is `salesforce`)
+
+These override the generic skills above for anything Salesforce-specific. `salesforce` is the hub —
+load it first if you're unsure which of the six applies.
+
+| You want to…                                        | Skill                          | Chains to                           |
+| --------------------------------------------------- | ------------------------------ | ----------------------------------- |
+| Understand what to test (and NOT test) in an org    | `salesforce`                   | all of the below                    |
+| Authenticate to an org / get past MFA / SSO         | `salesforce-auth`              | `config`, `salesforce-personas`     |
+| Locate a Lightning element; fix a strict-mode clash | `salesforce-locators`          | `selectors`, `page-objects`         |
+| Make a Lightning test wait reliably                 | `salesforce-waits`             | `wait-strategy`, `debugging`        |
+| Test who can see/do what (profiles, permsets, FLS)  | `salesforce-personas`          | `salesforce-auth`, `test-standards` |
+| Guard against admin-made metadata drift             | `salesforce-metadata-contract` | `type-safety`, `api-testing`        |
+| Create/clean up org records for a test              | `salesforce-data`              | `data-strategy`, `fixtures`         |
+
 If nothing matches, default to `common-tasks` or ASK. Naming a skill is a fallback for when the
 wrong one loaded.
 
@@ -123,11 +147,57 @@ wrong one loaded.
 
 ## 6. Profiles (set by `bootstrap`, recorded in `PROJECT.md`)
 
-| Profile      | Locator priority                           | Notes                                                  |
-| ------------ | ------------------------------------------ | ------------------------------------------------------ |
-| `generic`    | role → label → placeholder → text → testId | Playwright-official order; default                     |
-| `controlled` | **testId** → role → label → text           | You can add `data-testid`; most stable                 |
-| `salesforce` | role → label → text → testId               | + Lightning anti-flake; never trust hashed ids/classes |
-| `api-only`   | n/a                                        | UI projects pruned; reconsider §5 first                |
+| Profile      | Locator priority                           | Notes                                     |
+| ------------ | ------------------------------------------ | ----------------------------------------- |
+| `generic`    | role → label → placeholder → text → testId | Playwright-official order; default        |
+| `controlled` | **testId** → role → label → text           | You can add `data-testid`; most stable    |
+| `salesforce` | role → label → text → testId               | Full pack: 6 extra skills + code. See §7. |
+| `api-only`   | n/a                                        | UI projects pruned; reconsider §5 first   |
 
 The `selectors` and `wait-strategy` skills read the active profile from `PROJECT.md`.
+
+---
+
+## 7. The Salesforce pack
+
+`salesforce` is not just a locator preference — it ships its own skills (§4) and its own code:
+
+```
+config/salesforce.config.ts           org URLs, API version pin, admin + subject personas
+enums/salesforce/                     sObject names, ui-api paths, /lightning/* routes
+helpers/salesforce/                   auth · describe · soql · lightning waits · contract · permissions
+fixtures/salesforce/                  adminOrg + org + orgAs · persona contexts · metadata schemas
+pages/salesforce/                     Lightning component objects (combobox, datatable, modal, toast…)
+test-data/salesforce/personas.ts      the persona lattice (9 personas, one axis apart)
+test-data/salesforce/contracts/       the contract AS DATA — shape + CRUD + FLS per persona
+tests/salesforce/contract/            org project: drift · field shape · permissions   (no browser)
+tests/salesforce/ui/                  salesforce project: behaviour as the subject persona
+scripts/generate-sobject-schemas.ts   describe → Zod          (run at bootstrap, per org)
+scripts/generate-visible-fields.ts    per-persona visible-field sets  (leak detection)
+```
+
+Four things differ from every other profile, and they are the whole reason the pack exists:
+
+1. **Two identities, not one.** `adminOrg` (System Admin) ARRANGES and TEARS DOWN; the subject persona
+   ACTS and ASSERTS. Arrange as a restricted user → teardown silently cannot delete → data leaks.
+   Assert as an admin → Modify All Data bypasses sharing and FLS → the test passes with the permission
+   model completely broken. UI projects default to `standardUser`, never admin.
+2. **Auth is org auth, not a login form.** The JWT bearer flow mints a session without touching the
+   login UI — which is also how you legitimately get past mandatory MFA. Never automate an MFA challenge.
+3. **The API contract is org metadata.** Salesforce ships no OpenAPI. `describe` _is_ the contract, and
+   it changes the moment an admin clicks Save — so drift detection is a first-class test type (`@contract`).
+4. **Every assertion has a "for whom".** The permission model is the product. Personas form a lattice
+   (each differs on exactly one axis), and absence assertions need a positive control that is **not**
+   an admin — an admin passes via Modify All Data even with the grant broken.
+
+**Layering is not optional here** (`docs/salesforce/TEST-ARCHITECTURE.md`):
+
+| Layer    | Project            | Asserts                                                                                                                                  |
+| -------- | ------------------ | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| Contract | `org` (no browser) | types, lengths, picklist VALUES, references, record types, permission-set grants, object CRUD, per-persona FLS, exact visible-field sets |
+| UI       | `salesforce`       | **behaviour only** — workflows, persistence, and whether the screen _honours_ the model above                                            |
+
+Field metadata and permission matrices in the UI are a wrong-layer error: ~100× the cost, and UI
+absence is ambiguous (FLS? page layout? record type?) where the API tells you which.
+
+If the profile is NOT `salesforce`, `bootstrap` prunes all of the above.

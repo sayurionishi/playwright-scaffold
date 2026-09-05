@@ -1,5 +1,5 @@
 import type { APIRequestContext, APIResponse } from '@playwright/test';
-import type { ZodType } from 'zod';
+import type { ZodType, ZodTypeDef } from 'zod';
 import { appConfig } from '../../config/app.config';
 
 export interface ApiResult<T> {
@@ -14,8 +14,14 @@ export interface ApiResult<T> {
 }
 
 interface RequestOptions<T> {
-  /** Zod schema to validate the response body against. Strongly recommended for every call. */
-  schema?: ZodType<T>;
+  /**
+   * Zod schema to validate the response body against. Strongly recommended for every call.
+   *
+   * The input type is `unknown` (not `T`) because we're parsing an untrusted JSON body. That also
+   * lets schemas whose input and output types differ — anything using `.default()`, `.transform()`,
+   * or `.coerce` — be passed here. Salesforce's `describe` schemas need exactly that.
+   */
+  schema?: ZodType<T, ZodTypeDef, unknown>;
   /** Query params appended to the URL. */
   params?: Record<string, string | number | boolean>;
   /** JSON request body. */
@@ -38,10 +44,19 @@ interface RequestOptions<T> {
  * Contract drift is a BUG to file (test.skip + // FIXME), never a reason to loosen the schema.
  */
 export class ApiRequest {
-  constructor(private readonly request: APIRequestContext) {}
+  /**
+   * @param request Playwright's request context.
+   * @param baseUrl Host to prefix relative paths with. Defaults to `appConfig.apiUrl`.
+   *   The Salesforce `org` fixture passes the org's instance URL here, because that host comes
+   *   from the token response at runtime and differs per persona and per sandbox refresh.
+   */
+  constructor(
+    private readonly request: APIRequestContext,
+    private readonly baseUrl: string = appConfig.apiUrl,
+  ) {}
 
   private url(path: string): string {
-    return path.startsWith('http') ? path : `${appConfig.apiUrl}${path}`;
+    return path.startsWith('http') ? path : `${this.baseUrl}${path}`;
   }
 
   private async handle<T>(

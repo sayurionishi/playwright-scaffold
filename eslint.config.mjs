@@ -25,6 +25,16 @@ export default tseslint.config(
     },
   },
   {
+    /* Fixture files must use `async ({}, use) => …` for a fixture with no dependencies.
+       Playwright INSPECTS the destructuring pattern to resolve a fixture's dependency graph and
+       rejects a plain parameter name outright ("First argument must use the object destructuring
+       pattern"). So the empty pattern is load-bearing, not a style slip. */
+    files: ['fixtures/**/*.ts'],
+    rules: {
+      'no-empty-pattern': 'off',
+    },
+  },
+  {
     /* Playwright-specific rules apply to spec files only. */
     files: ['tests/**/*.spec.ts'],
     ...playwright.configs['flat/recommended'],
@@ -38,7 +48,23 @@ export default tseslint.config(
       'playwright/no-networkidle': 'warn',
       // Assertions belong in specs, never in page objects.
       'playwright/no-standalone-expect': 'off',
-      'playwright/expect-expect': 'warn',
+      /* The Salesforce contract layer asserts through shared helpers (assertObjectShape,
+         assertFieldAccess, assertVisibleFieldSet, …) so that one run reports every drifted field
+         instead of stopping at the first. Teach the rule to recognise them — otherwise it reports
+         "test has no assertions" on the most assertion-dense tests in the suite. */
+      'playwright/expect-expect': [
+        'warn',
+        {
+          assertFunctionNames: [
+            'expect',
+            'assertObjectShape',
+            'assertFieldShape',
+            'assertObjectCrud',
+            'assertFieldAccess',
+            'assertVisibleFieldSet',
+          ],
+        },
+      ],
     },
   },
 );

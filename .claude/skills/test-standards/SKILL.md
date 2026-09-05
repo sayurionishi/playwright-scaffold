@@ -70,9 +70,15 @@ await test.step('Then I see an error and stay on /login', async () => { … });
 Use the **structured tag option** (Playwright 1.42+) — `test('name', { tag: '@smoke' }, async …)` — not a tag baked into the title. It's the modern form and keeps titles clean. (A `@tag` in the title still works with `--grep`, but prefer the option.)
 
 `@smoke` (critical, fast) · `@sanity` · `@regression` (broad) · `@api` · `@e2e` · `@security` ·
+`@contract` (a shape/metadata snapshot, not behavior) · `@persona` (who can see/do what) ·
 `@destructive` (mutates shared state — runs `--workers=1`, **wins** over any other tag, requires cleanup).
 Tag the `test`, never the `describe`. `npm run test:smoke` etc. filter by tag via `--grep`.
 ([tag docs](https://playwright.dev/docs/test-annotations#tag-tests))
+
+`@contract` and `@persona` exist mainly for the `salesforce` profile, where metadata drift and the
+permission matrix are distinct test types you want to run on their own cadence — contract checks on every
+push, the persona matrix before a permissions release. They're profile-agnostic though: any app with a
+generated contract or a role model can use them. See `salesforce-metadata-contract` / `salesforce-personas`.
 
 ## Independence (parallel-safe)
 

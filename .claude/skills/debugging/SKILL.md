@@ -36,3 +36,22 @@ Never suppress — investigate first, fix second. A green test that hides a real
 - Raising a timeout to mask a slow/missing signal.
 - `test.skip` without a `// FIXME: <ticket>`.
 - Loosening a schema / weakening an assertion to turn red green.
+
+## Reading a timeout failure
+
+The error text names the cause — read it before touching anything.
+
+| Error                                                                | Means                                        | Fix                                                                                                         |
+| -------------------------------------------------------------------- | -------------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| `locator.click: Timeout 10000ms exceeded` + `element is not enabled` | Button genuinely disabled                    | The app hasn't enabled it — usually a form not committed. `fillAndBlur` (`wait-strategy`)                   |
+| …+ `element is not visible`                                          | Hidden or zero-size                          | Wrong locator, or the screen isn't ready. Assert readiness first                                            |
+| …+ `element intercepts pointer events` / `subtree intercepts`        | **Covered by something**                     | A toast, modal backdrop, sticky header, or spinner overlay. Wait for it to clear — do NOT `{ force: true }` |
+| …+ `element is not stable`                                           | Still animating                              | Wait for a post-animation signal                                                                            |
+| `resolved to 2 elements`                                             | Strict-mode violation                        | Scope it. Not `.first()` (`selectors`)                                                                      |
+| `Test timeout of 45000ms exceeded` with no action named              | The test ran out of budget across many steps | The test is doing too much, or an early wait is silently slow. Split it, or check the trace                 |
+
+**`{ force: true }` is not a fix for an interception error.** It skips the actionability checks, so the
+click lands on whatever is actually on top — the test goes green while the user-visible bug remains.
+
+The trace (`trace: 'on-first-retry'`) shows exactly what the action was waiting for and what was on
+top of the element. Open it before theorising: `npx playwright show-trace <path>`.

@@ -30,6 +30,11 @@ Otherwise, proceed here.
 OpenAPI / Swagger is the source of truth. No docs → capture the live shape as a fallback and **flag it**
 in the proposal. Never invent fields.
 
+> **Salesforce:** there is no OpenAPI. The contract is the org's own metadata (`sobjects/<Object>/describe`),
+> it drifts without a deploy, and schemas are **generated, not hand-written**. Load
+> **`salesforce-metadata-contract`** — it replaces this phase for org data access. Custom Apex REST
+> endpoints are your own code, so the rest of this skill applies to them in full.
+
 ## Phase 3 — Schemas (see `type-safety`)
 
 One `z.strictObject` per response; export schema + inferred type. Reuse `_error.schema.ts` for errors.

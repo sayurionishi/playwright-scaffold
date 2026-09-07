@@ -1,6 +1,8 @@
 import { defineConfig, devices } from '@playwright/test';
 import dotenv from 'dotenv';
 import path from 'node:path';
+import { appConfig } from './config/app.config';
+import { salesforceConfig } from './config/salesforce.config';
 
 /**
  * Environment loading.
@@ -10,8 +12,17 @@ import path from 'node:path';
 const ENVIRONMENT = process.env.ENVIRONMENT ?? 'dev';
 dotenv.config({ path: path.resolve(process.cwd(), `env/.env.${ENVIRONMENT}`) });
 
-const BASE_URL = process.env.BASE_URL ?? 'http://localhost:3000';
-const isCI = !!process.env.CI;
+/**
+ * These are safe to read here even though the imports above are hoisted ABOVE `dotenv.config()`.
+ * Every property on both config objects is a GETTER, so importing the module captures nothing —
+ * the `process.env` read is deferred to first access, and every access below happens inside the
+ * `defineConfig({ … })` literal, which is evaluated after dotenv has loaded the env file.
+ *
+ * Turning any of those getters back into a plain property would silently break this. See the
+ * rationale block in `config/app.config.ts`.
+ */
+const BASE_URL = appConfig.baseUrl;
+const isCI = appConfig.isCI;
 
 /**
  * ═══════════════════════════════════════════════════════════════════════════════════════════════
@@ -140,7 +151,7 @@ export default defineConfig({
       // No browser, so there are no actionability waits to bound — a slow test here means a slow
       // network or a slow backend, and 30s is already a long time for one HTTP call.
       timeout: TIMEOUTS.apiTest,
-      use: { baseURL: process.env.API_URL ?? BASE_URL },
+      use: { baseURL: appConfig.apiUrl },
     },
     /**
      * `org` — the Salesforce CONTRACT layer. No browser, no storageState: the `adminOrg`/`org`/
@@ -207,7 +218,7 @@ export default defineConfig({
         ...devices['Desktop Chrome'],
         // Namespaced by ENVIRONMENT (the same constant used above to pick the .env file) so a run
         // against staging never picks up a session `setup:salesforce` minted for dev, or vice versa.
-        storageState: `.auth/${ENVIRONMENT}/sf-${process.env.SF_DEFAULT_PERSONA ?? 'standardUser'}.json`,
+        storageState: salesforceConfig.storageStateFor(salesforceConfig.defaultPersona),
         actionTimeout: TIMEOUTS.salesforceAction,
         navigationTimeout: TIMEOUTS.salesforceNavigation,
       },
@@ -218,7 +229,7 @@ export default defineConfig({
       testDir: './tests/functional',
       use: {
         ...devices['Desktop Chrome'],
-        storageState: process.env.STORAGE_STATE ?? '.auth/user.json',
+        storageState: appConfig.storageState,
       },
       dependencies: ['setup'],
     },
@@ -233,7 +244,7 @@ export default defineConfig({
       timeout: TIMEOUTS.e2eTest,
       use: {
         ...devices['Desktop Chrome'],
-        storageState: process.env.STORAGE_STATE ?? '.auth/user.json',
+        storageState: appConfig.storageState,
       },
       dependencies: ['setup'],
     },

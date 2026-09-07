@@ -58,7 +58,17 @@ export const salesforceConfig = {
    * contract move under you, and letting it go stale eventually falls out of the supported window.
    * `tests/salesforce/metadata-contract.spec.ts` asserts the org still supports this value.
    */
-  apiVersion: process.env.SF_API_VERSION ?? 'v62.0',
+  /**
+   * ⚠️ A GETTER ON PURPOSE — do not flatten to `apiVersion: process.env.SF_API_VERSION ?? …`.
+   *
+   * This property WAS a plain value, and it silently ignored `SF_API_VERSION` from the env file:
+   * `scripts/generate-sobject-schemas.ts` imports this module (hoisted, evaluated first) and only
+   * then calls `dotenv.config()`, so the plain read captured the default and stamped the WRONG
+   * version into the committed snapshot. Full rationale in `config/app.config.ts`.
+   */
+  get apiVersion(): string {
+    return process.env.SF_API_VERSION ?? 'v62.0';
+  },
 
   /**
    * OAuth login host. Production/Dev Edition: https://login.salesforce.com
@@ -171,14 +181,18 @@ export const salesforceConfig = {
    * Prefix for every record this suite creates. Lets a human find and purge orphaned test data
    * with one list-view filter — orphans WILL accumulate in a shared sandbox. See `salesforce-data`.
    */
-  testDataPrefix: process.env.SF_TEST_PREFIX ?? 'PWT-',
+  get testDataPrefix(): string {
+    return process.env.SF_TEST_PREFIX ?? 'PWT-';
+  },
 
   /**
    * Abort a run when the org's remaining daily API requests fall below this fraction of Max.
    * The daily limit is org-wide and shared with production integrations — exhausting it has blast
    * radius well beyond your tests. See `salesforce-data`.
    */
-  apiLimitAbortThreshold: Number(process.env.SF_API_LIMIT_THRESHOLD ?? '0.1'),
+  get apiLimitAbortThreshold(): number {
+    return Number(process.env.SF_API_LIMIT_THRESHOLD ?? '0.1');
+  },
 } as const;
 
 /** Build a versioned REST path: `/services/data/v62.0/<suffix>`. */

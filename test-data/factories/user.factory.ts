@@ -1,4 +1,4 @@
-import { faker } from '@faker-js/faker';
+import { fakerFor } from '../faker';
 
 export interface NewUser {
   email: string;
@@ -13,11 +13,11 @@ export interface NewUser {
  * RULES (data-strategy skill):
  *  - Factories produce DYNAMIC happy-path data (Faker). Use for payloads/content.
  *  - `overrides` lets a test pin specific fields; everything else is randomized.
- *  - `seed` makes a call reproducible when a test needs determinism.
+ *  - `seed` makes a call reproducible using its OWN generator — see test-data/faker.ts.
  *  - Curated INVALID/boundary inputs do NOT belong here — see test-data/static/.
  */
 export function makeUser(overrides: Partial<NewUser> = {}, seed?: number): NewUser {
-  if (seed !== undefined) faker.seed(seed);
+  const faker = fakerFor(seed);
   return {
     email: faker.internet.email().toLowerCase(),
     firstName: faker.person.firstName(),

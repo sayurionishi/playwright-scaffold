@@ -29,6 +29,8 @@ else Salesforce-specific — the pack (§7) replaces several generic defaults ou
 
 Never ship, and refuse to generate, any of the following:
 
+<!-- BEGIN GENERATED: constitution — edit rules/constitution.ts, run npm run rules:generate -->
+
 | #   | Forbidden                                                                     | Instead                                                                                                                                                                                                                                                               |
 | --- | ----------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 1   | `page.waitForTimeout(...)`                                                    | Web-first assertion or a pre-registered response wait (`wait-strategy`)                                                                                                                                                                                               |
@@ -47,18 +49,21 @@ Never ship, and refuse to generate, any of the following:
 | 14  | More than one tag per test                                                    | Exactly one (`@smoke`/`@sanity`/`@regression`/`@api`/`@e2e`/`@security`/`@contract`/`@persona`); `@destructive` wins                                                                                                                                                  |
 | 15  | A Salesforce object or field API name written from memory                     | Read it from `describe` / `ui-api/object-info` (`salesforce-metadata-contract`)                                                                                                                                                                                       |
 
-**What is actually enforced right now** — stated precisely, because a false enforcement claim is
-worse than no claim: it stops both humans and models from checking.
+<!-- END GENERATED: constitution -->
 
-| Rule                | Backing                                                                                                                                                                                                              |
-| ------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| #5 `any`            | **Blocking.** `@typescript-eslint/no-explicit-any: 'error'` over all `*.ts`.                                                                                                                                         |
-| #1 `waitForTimeout` | **Blocking in spec files ONLY.** The Playwright rules are scoped to the spec glob, so a sleep in `pages/`, `helpers/` or `fixtures/` is not linted — the exact directories `page-objects` tells you to put waits in. |
-| #2 `networkidle`    | **Not enforced.** The rule is `'warn'`, and `npm run lint` has no `--max-warnings`, so a violation exits 0 and CI stays green.                                                                                       |
-| everything else     | **On you.** Review is the only gate.                                                                                                                                                                                 |
+**What is actually enforced** — see **`docs/PARITY-MATRIX.md`**, which is GENERATED from
+`rules/constitution.ts` and therefore cannot overclaim. Today **2 of the 15 rules are mechanically
+blocking** (#5 repo-wide, #1 in spec files only); everything else is review-only. That number is
+deliberately in one place: the previous hand-written claim here ("a hook (ESLint) enforces #1, #2,
+#5") was wrong about all three and nothing caught it.
 
-There is **no Claude Code hook** in this repo. The blocking gate is the CI `quality` job
-(`typecheck` + `lint`); `.husky/pre-commit` runs `lint-staged` over staged files only.
+There is no Claude Code hook in this repo. The blocking gate is the CI `quality` job
+(`typecheck` + `lint` + `rules:check`); `.husky/pre-commit` runs `lint-staged` over staged files.
+
+⚠️ The rule table above is generated. To change a rule, edit `rules/constitution.ts` and run
+`npm run rules:generate` — that rewrites this table, the Copilot instructions, `AGENTS.md`, and the
+parity matrix together, so Claude and Copilot cannot drift apart. `npm run rules:check` fails CI if
+a generated block was hand-edited.
 
 Rule #15 is the Salesforce-specific sharpening of #4, and it earns its own row because Salesforce field
 API names are **org state, not application source**. An admin can add, rename, or delete a field with no

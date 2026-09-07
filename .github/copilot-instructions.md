@@ -1,8 +1,12 @@
 # GitHub Copilot — Repository Instructions
 
-> **Mirror of the canonical AI rules.** The authoritative source is `CLAUDE.md` + `.claude/skills/**`.
-> If this file and a skill disagree, the **skill wins**. These mirrors may lag — when in doubt, open
-> the matching `.claude/skills/<name>/SKILL.md`. Path-scoped detail lives in `.github/instructions/*`.
+> **The hard stops below are GENERATED** from `rules/constitution.ts`, the single rule source that
+> also generates `CLAUDE.md` §1 and `.github/instructions/*`. They cannot drift from what Claude
+> sees — `npm run rules:check` fails CI if they do. Do not hand-edit the generated block.
+>
+> For rationale and worked examples, open the matching `.claude/skills/<name>/SKILL.md`; the
+> path-scoped rules are in `.github/instructions/*`. Which rules are actually machine-enforced (as
+> opposed to review-only) is in `docs/PARITY-MATRIX.md`.
 
 This is an AI-native Playwright + TypeScript test scaffold. It tests **UI (functional + e2e)** and
 **API**, with **security** coverage, via Page Object Model, fixture DI, deterministic waits, and
@@ -30,20 +34,25 @@ If `PROJECT.md` does NOT exist, this is a fresh clone — **bootstrap it first**
 
 ## Hard stops (refuse to generate these)
 
-1. `page.waitForTimeout(...)` — use a web-first assertion or a pre-registered response wait.
-2. `page.waitForLoadState('networkidle')` **on an SPA** — use the specific gating response. (Fine only on static/SSR pages that go quiet.)
-3. XPath / CSS-class / nth-child / auto-generated-id selectors — use semantic or testId per the active profile.
-4. A guessed selector, URL, endpoint, enum, or UI string — explore first (live app / OpenAPI) or ASK. Never invent.
-5. `any` — use a real type or `unknown` + narrowing.
-6. `z.object(...)` for an API schema — use `z.strictObject(...)`.
-7. Skipping response validation — validate every API body with a Zod schema.
-8. Assertions inside a page object — page objects act; specs assert.
-9. Raw locators in a spec — locators live in page objects only.
-10. `new SomePage(page)` in a test — consume via the fixture.
-11. Hardcoded URL/credential — `process.env.*` via `config/`; paths & messages via `enums/`.
-12. `.json` static data — `.ts` with `as const`.
-13. Silencing a failure (try/catch on `expect`, raised timeout, silent `.skip`) — fix the root cause; `.skip` needs `// FIXME: <ticket>`.
-14. More than one tag per test — exactly one; `@destructive` wins.
+<!-- BEGIN GENERATED: hard-stops — edit rules/constitution.ts, run npm run rules:generate -->
+
+1. `page.waitForTimeout(...)` — Web-first assertion or a pre-registered response wait (`wait-strategy`)
+2. `page.waitForLoadState('networkidle')` on an SPA — The specific gating response (`helpers/util/network.ts`). Acceptable ONLY on static/SSR pages that truly go quiet — never on a chatty SPA. On the `salesforce` profile this is a hard REFUSAL, not a discouragement (Aura never goes quiet). See `wait-strategy`.
+3. XPath, CSS-class, nth-child, or auto-generated-id selectors — Semantic / testId per the active profile (`selectors`)
+4. A guessed selector, URL, enum value, endpoint, or UI string — Explore first (playwright-cli / OpenAPI) or ASK. Never invent.
+5. `any` type — A real type or `unknown` + narrowing (`type-safety`)
+6. `z.object(...)` for an API schema — `z.strictObject(...)` (catches contract drift)
+7. Skipping `expect(Schema.parse(body))` / `{ schema }` on an API response — Validate every response body
+8. Assertions inside a page object — Page objects act; specs assert
+9. Raw locators in a spec — Locators live in page objects only
+10. `new SomePage(page)` inside a test — Consume via the fixture (`async ({ somePage }) => …`)
+11. Hardcoded URL / credential — `process.env.*` via `config/`; paths & messages via `enums/`
+12. `.json` static data — `.ts` with `as const`
+13. Silencing a failure (`try/catch` on `expect`, raised timeout, silent `.skip`) — Fix the root cause; `test.skip` requires `// FIXME: <ticket>`
+14. More than one tag per test — Exactly one (`@smoke`/`@sanity`/`@regression`/`@api`/`@e2e`/`@security`/`@contract`/`@persona`); `@destructive` wins
+15. A Salesforce object or field API name written from memory — Read it from `describe` / `ui-api/object-info` (`salesforce-metadata-contract`) _(`salesforce` profile)_
+
+<!-- END GENERATED: hard-stops -->
 
 ## Architecture
 

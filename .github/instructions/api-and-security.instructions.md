@@ -1,8 +1,16 @@
 ---
-applyTo: 'tests/api/**,fixtures/api/**'
+applyTo: 'tests/api/**,fixtures/api/**,test-data/**'
 ---
 
 # API & security testing (mirror of `.claude/skills/api-testing` + `security-testing` + `type-safety`)
+
+<!-- BEGIN GENERATED: rules — edit rules/constitution.ts, run npm run rules:generate -->
+
+- **Rule #5** — `any` type. A real type or `unknown` + narrowing (`type-safety`)
+- **Rule #6** — `z.object(...)` for an API schema. `z.strictObject(...)` (catches contract drift)
+- **Rule #7** — Skipping `expect(Schema.parse(body))` / `{ schema }` on an API response. Validate every response body
+
+<!-- END GENERATED: rules -->
 
 - **Tool gate first:** a large pure-API suite where the API is the SUT and the backend is non-TS → recommend pytest+Pydantic / RestAssured / Schemathesis instead, and stop. Don't write it in Playwright.
 - Source the contract from **OpenAPI/Swagger**; no docs → capture the live shape and flag it.

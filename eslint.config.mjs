@@ -20,6 +20,16 @@ export default tseslint.config(
     },
   },
   {
+    /* Standalone CLI scripts print to stdout — that IS their interface. `no-console` exists to keep
+       stray debugging out of the suite, not to stop a generator reporting what it wrote. This
+       override matters because CI lints with `--max-warnings=0`: without it, every script would
+       have to either stay silent or disable the rule inline. */
+    files: ['scripts/**/*.ts'],
+    rules: {
+      'no-console': 'off',
+    },
+  },
+  {
     /* Fixture files must use `async ({}, use) => …` for a fixture with no dependencies.
        Playwright INSPECTS the destructuring pattern to resolve a fixture's dependency graph and
        rejects a plain parameter name outright ("First argument must use the object destructuring

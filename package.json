@@ -27,6 +27,8 @@
     "lint:fix": "eslint . --fix",
     "format": "prettier --write .",
     "typecheck": "tsc --noEmit",
+    "rules:generate": "tsx scripts/generate-rule-surfaces.ts",
+    "rules:check": "tsx scripts/generate-rule-surfaces.ts --check",
     "prepare": "husky"
   },
   "keywords": [

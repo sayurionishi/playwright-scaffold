@@ -44,6 +44,10 @@ jobs:
       - run: npm ci
       - run: npm run typecheck
       - run: npm run lint
+      # Fails if any generated AI-rule surface (CLAUDE.md §1, the Copilot instructions, AGENTS.md,
+      # the parity matrix) was hand-edited or has drifted from rules/constitution.ts. This is what
+      # stops the Claude and Copilot rule sets diverging the way they had before they were generated.
+      - run: npm run rules:check
 
   api:
     name: API tests (no browser)

@@ -28,14 +28,18 @@ A malicious or malformed input must be:
 
 ```ts
 for (const payload of [...SECURITY_PAYLOADS.sqlInjection, ...SECURITY_PAYLOADS.xss]) {
-  test(`rejects malicious input: ${payload.slice(0, 24)} @security`, async ({ api }) => {
-    const { status, body } = await api.post(ApiEndpoints.USERS, {
-      data: { email: payload /* … */ },
-    });
-    expect(status).toBeGreaterThanOrEqual(400);
-    expect(status).toBeLessThan(500); // 500 = unguarded path = bug
-    expect(JSON.stringify(body)).not.toContain('<script>');
-  });
+  test(
+    `rejects malicious input: ${payload.slice(0, 24)}`,
+    { tag: '@security' },
+    async ({ api }) => {
+      const { status, body } = await api.post(ApiEndpoints.USERS, {
+        data: { email: payload /* … */ },
+      });
+      expect(status).toBeGreaterThanOrEqual(400);
+      expect(status).toBeLessThan(500); // 500 = unguarded path = bug
+      expect(JSON.stringify(body)).not.toContain('<script>');
+    },
+  );
 }
 ```
 

@@ -3,8 +3,8 @@
 For Salesforce (Lightning Experience) orgs — sandboxes, scratch orgs, or production.
 
 This profile is bigger than the others because Salesforce is not "a web app you test". It is a platform
-where **your configuration is the system under test** and most of the UI is generated for you. Six
-dedicated skills carry the detail; this file is the summary and the routing table.
+where **your configuration is the system under test** and most of the UI is generated for you. The
+dedicated skills below carry the detail; this file is the summary and the routing table.
 
 ## Skills in this pack
 

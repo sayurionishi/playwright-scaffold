@@ -41,7 +41,17 @@ export default tseslint.config(
       // legitimately fine on static/SSR pages that go quiet. On an SPA, replace it with a
       // deterministic response wait. Justify any kept use with an inline comment. See wait-strategy.
       'playwright/no-networkidle': 'warn',
-      // Assertions belong in specs, never in page objects.
+      /* ⚠️ This does NOT enforce Constitution #8 ("no assertions in a page object") — read on
+         before assuming it does.
+
+         `no-standalone-expect` flags an `expect()` that is not inside a `test()` body. It is off
+         because this repo deliberately asserts through shared helpers (see `expect-expect` below),
+         which the rule would flag as violations. Turning it on would break the contract layer, and
+         leaving it on would still not catch an `expect()` inside a page-object METHOD — which is
+         what #8 actually forbids.
+
+         So #8 is currently REVIEW-ONLY. A `no-restricted-syntax` rule scoped to `pages/**` is the
+         mechanism that would enforce it. */
       'playwright/no-standalone-expect': 'off',
       /* The Salesforce contract layer asserts through shared helpers (assertObjectShape,
          assertFieldAccess, assertVisibleFieldSet, …) so that one run reports every drifted field

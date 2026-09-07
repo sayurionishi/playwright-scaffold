@@ -4,7 +4,10 @@ import type { Page, Locator } from '@playwright/test';
  * Abstract base for every page object.
  *
  * NOTE — there is intentionally NO `waitForPageLoad() { waitForLoadState('networkidle') }`
- * here. networkidle is banned (see helpers/util/network.ts and the wait-strategy skill).
+ * here. A shared helper like that would push every page object toward the one wait that
+ * cannot be made deterministic on an SPA (see helpers/util/network.ts and the
+ * `wait-strategy` skill for the exact scope — refused on `salesforce` and any chatty SPA,
+ * still fine on a static/SSR page).
  * A page is "loaded" when the element you need is visible — assert that in the spec, or
  * wait for the specific gating response in the page object. Do not wait for the network
  * to fall silent; on an SPA it never does.

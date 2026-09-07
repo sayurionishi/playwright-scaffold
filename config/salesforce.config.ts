@@ -56,7 +56,7 @@ export const salesforceConfig = {
    *
    * PIN IT and ASSERT IT. Salesforce ships three releases a year; leaving this unpinned lets the
    * contract move under you, and letting it go stale eventually falls out of the supported window.
-   * `tests/salesforce/metadata-contract.spec.ts` asserts the org still supports this value.
+   * `tests/salesforce/contract/metadata-drift.spec.ts` asserts the org still supports this value.
    */
   /**
    * ⚠️ A GETTER ON PURPOSE — do not flatten to `apiVersion: process.env.SF_API_VERSION ?? …`.

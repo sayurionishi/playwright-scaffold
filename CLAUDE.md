@@ -47,7 +47,18 @@ Never ship, and refuse to generate, any of the following:
 | 14  | More than one tag per test                                                    | Exactly one (`@smoke`/`@sanity`/`@regression`/`@api`/`@e2e`/`@security`/`@contract`/`@persona`); `@destructive` wins                                                                                                                                                  |
 | 15  | A Salesforce object or field API name written from memory                     | Read it from `describe` / `ui-api/object-info` (`salesforce-metadata-contract`)                                                                                                                                                                                       |
 
-A hook (ESLint) enforces #1, #2, #5. The rest are on you.
+**What is actually enforced right now** — stated precisely, because a false enforcement claim is
+worse than no claim: it stops both humans and models from checking.
+
+| Rule                | Backing                                                                                                                                                                                                              |
+| ------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| #5 `any`            | **Blocking.** `@typescript-eslint/no-explicit-any: 'error'` over all `*.ts`.                                                                                                                                         |
+| #1 `waitForTimeout` | **Blocking in spec files ONLY.** The Playwright rules are scoped to the spec glob, so a sleep in `pages/`, `helpers/` or `fixtures/` is not linted — the exact directories `page-objects` tells you to put waits in. |
+| #2 `networkidle`    | **Not enforced.** The rule is `'warn'`, and `npm run lint` has no `--max-warnings`, so a violation exits 0 and CI stays green.                                                                                       |
+| everything else     | **On you.** Review is the only gate.                                                                                                                                                                                 |
+
+There is **no Claude Code hook** in this repo. The blocking gate is the CI `quality` job
+(`typecheck` + `lint`); `.husky/pre-commit` runs `lint-staged` over staged files only.
 
 Rule #15 is the Salesforce-specific sharpening of #4, and it earns its own row because Salesforce field
 API names are **org state, not application source**. An admin can add, rename, or delete a field with no
@@ -147,12 +158,12 @@ wrong one loaded.
 
 ## 6. Profiles (set by `bootstrap`, recorded in `PROJECT.md`)
 
-| Profile      | Locator priority                           | Notes                                     |
-| ------------ | ------------------------------------------ | ----------------------------------------- |
-| `generic`    | role → label → placeholder → text → testId | Playwright-official order; default        |
-| `controlled` | **testId** → role → label → text           | You can add `data-testid`; most stable    |
-| `salesforce` | role → label → text → testId               | Full pack: 6 extra skills + code. See §7. |
-| `api-only`   | n/a                                        | UI projects pruned; reconsider §5 first   |
+| Profile      | Locator priority                           | Notes                                   |
+| ------------ | ------------------------------------------ | --------------------------------------- |
+| `generic`    | role → label → placeholder → text → testId | Playwright-official order; default      |
+| `controlled` | **testId** → role → label → text           | You can add `data-testid`; most stable  |
+| `salesforce` | role → label → text → testId               | Full pack: extra skills + code. See §7. |
+| `api-only`   | n/a                                        | UI projects pruned; reconsider §5 first |
 
 The `selectors` and `wait-strategy` skills read the active profile from `PROJECT.md`.
 

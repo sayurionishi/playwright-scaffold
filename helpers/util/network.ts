@@ -6,11 +6,16 @@ import type { Page, Response } from '@playwright/test';
  * ─────────────────────────────────────────────────────────────────────────────
  * WHY THIS FILE EXISTS (read before using):
  *
- * `page.waitForLoadState('networkidle')` is BANNED in this scaffold. On any modern
- * SPA (and especially Salesforce Lightning) the network is never quiet for the 500 ms
- * networkidle requires — background polling, batched XHRs, analytics beacons. So the
- * wait either hangs until timeout or resolves in a random gap between requests. It is
- * non-deterministic by construction.
+ * `page.waitForLoadState('networkidle')` is unusable on an SPA. The network is never
+ * quiet for the 500 ms networkidle requires — background polling, batched XHRs,
+ * analytics beacons — so the wait either hangs until timeout or resolves in a random
+ * gap between requests. It is non-deterministic by construction.
+ *
+ * SCOPE, precisely (Constitution #2): it is a REFUSAL on the `salesforce` profile,
+ * where Aura genuinely never settles, and on any chatty SPA. It remains legitimate on a
+ * static/SSR page that really does go quiet. It is NOT globally banned — ESLint only
+ * warns — so this file is the replacement you should reach for, not a prohibition
+ * notice. The `wait-strategy` skill is the authority.
  *
  * Instead, wait for the SPECIFIC response that gates your next action.
  *

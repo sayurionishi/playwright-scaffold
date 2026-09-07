@@ -12,7 +12,7 @@ Never suppress — investigate first, fix second. A green test that hides a real
 1. **Read the full error** — type, expected vs received, the failing line.
 2. **Classify the mode** (table below).
 3. **Reproduce** with the single spec, deterministically: `npx playwright test <file> --project=<p>`.
-4. **Investigate** with the right tool: Trace Viewer (`npm run report`), UI Mode (`npm run test:ui`), `--debug` inspector, re-explore with playwright-cli.
+4. **Investigate** with the right tool: the HTML report (`npm run report`), Trace Viewer (`npx playwright show-trace <trace.zip>`), UI Mode (`npm run test:ui`), `--debug` inspector, re-explore with playwright-cli.
 5. **Fix at the root cause.**
 6. **Re-run.** For a flake fix, run **5× consecutively** green before declaring it fixed.
 7. **Green locally, red in CI?** Replay CI: `npm run test:ci -- <file>`.
@@ -25,7 +25,7 @@ Never suppress — investigate first, fix second. A green test that hides a real
 | Flaky (passes sometimes)                    | bad wait — `waitForTimeout`/`networkidle`/missed response | `wait-strategy`: pre-register before trigger; web-first assert; blur-after-fill         |
 | `toBeHidden()` passes but data isn't loaded | loader selector matched zero elements (CSS-module hash)   | `[class*="…"]` partial-match or testid + `.first()`                                     |
 | `ZodError` from `.parse(body)`              | response ≠ documented contract (drift)                    | real bug → `test.skip` + `// FIXME`; else fix the schema                                |
-| Strict-mode violation (>1 match)            | locator not specific                                      | scope it / `.first()` (`selectors`)                                                     |
+| Strict-mode violation (>1 match)            | locator not specific                                      | scope it — `modal.getByRole(…)`. NOT `.first()` (`selectors`)                           |
 | Locator not found                           | markup changed                                            | re-explore; update the page object                                                      |
 | "fixture is undefined"                      | not registered / imported from `@playwright/test`         | register in `fixtures/`; import from `test-options`                                     |
 | Passes alone, fails in suite                | shared-state coupling                                     | make independent; `@destructive` cleanup (`test-standards`)                             |

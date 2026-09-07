@@ -146,7 +146,7 @@ Two things that mapping buys you for free:
 
 ## The drift test
 
-`tests/salesforce/metadata-contract.spec.ts`. Two complementary assertions:
+`tests/salesforce/contract/metadata-drift.spec.ts`. Two complementary assertions:
 
 ```ts
 test(

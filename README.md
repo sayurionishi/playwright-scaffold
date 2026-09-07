@@ -99,7 +99,7 @@ being generic and starts being yours.
 
 | Profile      | What it changes                                                                                                    |
 | ------------ | ------------------------------------------------------------------------------------------------------------------ |
-| `generic`    | Playwright's official locator order (role → label → text → testId). The default.                                   |
+| `generic`    | Playwright's official locator order (role → label → placeholder → text → testId). The default.                     |
 | `controlled` | You can add `data-testid` → testId-first locators. Most stable.                                                    |
 | `salesforce` | Activates the **Salesforce pack** — 6 extra skills plus org auth, personas, and metadata-contract code. See below. |
 | `api-only`   | Prunes the UI projects (and may suggest a backend-native tool instead).                                            |
@@ -117,7 +117,7 @@ approval) writes tests that follow the conventions.
 Salesforce isn't "a web app you test" — it's a platform where **your configuration is the system under
 test** and most of the UI is generated. So the `salesforce` profile is more than a locator preference:
 
-**Six extra skills** — `salesforce` (the hub: what to test and, importantly, what _not_ to),
+**A dedicated skill pack** — `salesforce` (the hub: what to test and, importantly, what _not_ to),
 `salesforce-auth`, `salesforce-locators`, `salesforce-waits`, `salesforce-personas`,
 `salesforce-metadata-contract`, `salesforce-data`.
 

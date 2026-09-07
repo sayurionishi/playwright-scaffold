@@ -68,11 +68,11 @@ these patterns need translating — that's a real change, not a tweak.
 
 ## 4. Waits — CHECK
 
-| #   | Item                                                                  | Notes                                                                                                                                                                                                   |
-| --- | --------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 4.1 | **Do the screens you test actually use the UI API?**                  | Watch the network on a record save. If you see `/ui-api/records` — good. If only `/aura`, the named wait helpers won't fire and you need `waitForAuraAction` (a documented smell) or a DOM-signal wait. |
-| 4.2 | Aura-era and managed-package components are the usual offenders       | Check per screen; don't generalize from one.                                                                                                                                                            |
-| 4.3 | `expect` timeout of 10s and 20s wait defaults suit your org's latency | Full sandboxes are slower than scratch orgs.                                                                                                                                                            |
+| #   | Item                                                                          | Notes                                                                                                                                                                                                   |
+| --- | ----------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 4.1 | **Do the screens you test actually use the UI API?**                          | Watch the network on a record save. If you see `/ui-api/records` — good. If only `/aura`, the named wait helpers won't fire and you need `waitForAuraAction` (a documented smell) or a DOM-signal wait. |
+| 4.2 | Aura-era and managed-package components are the usual offenders               | Check per screen; don't generalize from one.                                                                                                                                                            |
+| 4.3 | `expect` timeout of 7s and the 20s navigation default suit your org's latency | Full sandboxes are slower than scratch orgs.                                                                                                                                                            |
 
 4.1 is the one genuine "this might not apply to you" in the whole pack.
 
@@ -89,13 +89,13 @@ these patterns need translating — that's a real change, not a tweak.
 
 ## 6. Personas — FILL IN
 
-| #   | Item                                                                      | Action                                                                                                                          |
-| --- | ------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
-| 6.1 | `test-data/salesforce/personas.ts` ships **example** personas             | Replace with your org's real ones. Profile/permset names are org state — read them from the org.                                |
-| 6.2 | One org user + one `SF_USERNAME_<KEY>` env var per persona                | See `env/.env.salesforce.example`                                                                                               |
-| 6.3 | `FIELD_ACCESS` in `tests/salesforce/fls-matrix.spec.ts` is **empty**      | Add a real restricted field (API name from `describe`). We shipped no `Margin__c` because inventing one would violate rule #15. |
-| 6.4 | The `OBJECT_ACCESS` expectations match your real permission model         | They currently describe the example personas.                                                                                   |
-| 6.5 | Every persona test pairs an absence assertion with a **positive control** | The rule that makes these tests meaningful — `salesforce-personas`                                                              |
+| #   | Item                                                                                        | Action                                                                                                                                                                                       |
+| --- | ------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 6.1 | `test-data/salesforce/personas.ts` ships **example** personas                               | Replace with your org's real ones. Profile/permset names are org state — read them from the org.                                                                                             |
+| 6.2 | One org user + one `SF_USERNAME_<KEY>` env var per persona                                  | See `env/.env.salesforce.example`                                                                                                                                                            |
+| 6.3 | `fieldAccessByPersona` in `test-data/salesforce/contracts/account.contract.ts` is **empty** | Add a real restricted field (API name from `describe`). We shipped no `Margin__c` because inventing one would violate rule #15. Asserted by `tests/salesforce/contract/permissions.spec.ts`. |
+| 6.4 | The `crudByPersona` expectations match your real permission model                           | They currently describe the example personas.                                                                                                                                                |
+| 6.5 | Every persona test pairs an absence assertion with a **positive control**                   | The rule that makes these tests meaningful — `salesforce-personas`                                                                                                                           |
 
 ## 7. Data & limits — CHECK
 

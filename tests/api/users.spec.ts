@@ -39,8 +39,14 @@ test.describe('POST /users', () => {
         expect(data.email).toBe(draft.email);
       });
 
-      // teardown
-      await api.delete(buildPath(ApiEndpoints.USER_BY_ID, { id: data.id })).catch(() => {});
+      // Teardown. Best-effort ON PURPOSE, and the comment is the point: a cleanup failure must
+      // never overwrite the assertion result the test just reported. Constitution #13 forbids a
+      // BARE empty catch — swallowing an error with no explanation — not a deliberate one that
+      // says why. If teardown reliability matters more than that, move it into a fixture, where
+      // Playwright guarantees it runs even on a test timeout (see the `trackedRecords` fixture).
+      await api.delete(buildPath(ApiEndpoints.USER_BY_ID, { id: data.id })).catch(() => {
+        /* ignored: teardown must not mask the test's own result */
+      });
     },
   );
 

@@ -2,8 +2,6 @@ import { test, expect } from '../../../fixtures/test-options';
 import { SObjects } from '../../../enums/salesforce/sobjects';
 import { recordViewPattern } from '../../../enums/salesforce/lightning-routes';
 import { SalesforceApi } from '../../../enums/salesforce/salesforce-api';
-import { LightningRecordPage } from '../../../pages/salesforce/lightning-record.page';
-import { ListViewPage } from '../../../pages/salesforce/list-view.page';
 import {
   makeAccount,
   makeAccountTree,
@@ -49,7 +47,7 @@ test.describe('Account record page', () => {
   test(
     'a user can view a record created via the API',
     { tag: '@sanity' },
-    async ({ page, trackedRecords, subjectPersona }) => {
+    async ({ page, recordPage: makeRecordPage, trackedRecords, subjectPersona }) => {
       // ARRANGE as admin — fast, deterministic, never blocked by the subject's own permissions.
       // Creating this through the UI would cost ~30s and import every Lightning flake into a test
       // that isn't about the create screen.
@@ -61,7 +59,7 @@ test.describe('Account record page', () => {
       const created = await trackedRecords.create(SObjects.ACCOUNT, draft);
 
       // ACT as the SUBJECT persona — this browser context carries the restricted user's session.
-      const recordPage = new LightningRecordPage(page, SObjects.ACCOUNT);
+      const recordPage = makeRecordPage(SObjects.ACCOUNT);
 
       const loaded = waitForRecordLoad(page, created.id);
       await recordPage.gotoRecord(created.id);
@@ -80,11 +78,11 @@ test.describe('Account record page', () => {
   test(
     'a user can edit a field and the change persists',
     { tag: '@regression' },
-    async ({ page, adminOrg, trackedRecords }) => {
+    async ({ page, recordPage: makeRecordPage, adminOrg, trackedRecords }) => {
       const created = await trackedRecords.create(SObjects.ACCOUNT, makeAccount());
       const newPhone = '+1 555 0100';
 
-      const recordPage = new LightningRecordPage(page, SObjects.ACCOUNT);
+      const recordPage = makeRecordPage(SObjects.ACCOUNT);
 
       const loaded = waitForRecordLoad(page, created.id);
       await recordPage.gotoRecord(created.id);
@@ -171,7 +169,7 @@ test.describe('Account list view', () => {
   test(
     'a hierarchy created in one composite call is listable',
     { tag: '@sanity' },
-    async ({ page, trackedRecords }) => {
+    async ({ page, listView: makeListView, trackedRecords }) => {
       // composite/tree creates the Account AND its Contacts in a single request (~200 ms).
       // createTree asserts hasErrors internally — the outer 200 lies when subrecords fail.
       //
@@ -182,7 +180,7 @@ test.describe('Account list view', () => {
       const tree = await trackedRecords.createTree(SObjects.ACCOUNT, draft.records);
       const accountId = treeId(tree, 'acct1');
 
-      const listView = new ListViewPage(page, SObjects.ACCOUNT);
+      const listView = makeListView(SObjects.ACCOUNT);
 
       const listed = waitForListRecords(page);
       await listView.goto();

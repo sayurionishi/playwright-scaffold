@@ -80,10 +80,9 @@ export const CONSTITUTION: readonly ConstitutionRule[] = [
     topic: 'waits',
     enforcement: {
       kind: 'eslint',
-      rule: 'playwright/no-wait-for-timeout',
-      scope: 'tests/**/*.spec.ts',
+      rule: 'playwright/no-wait-for-timeout (+ no-restricted-syntax)',
+      scope: 'tests/**, pages/**, helpers/**, fixtures/**',
       blocking: true,
-      gap: 'Not linted in pages/, helpers/ or fixtures/ — the directories `page-objects` tells you to put waits in.',
     },
   },
   {
@@ -96,9 +95,9 @@ export const CONSTITUTION: readonly ConstitutionRule[] = [
     enforcement: {
       kind: 'eslint',
       rule: 'playwright/no-networkidle',
-      scope: 'tests/**/*.spec.ts',
-      blocking: false,
-      gap: "Severity is 'warn' and `npm run lint` passes no --max-warnings, so a violation exits 0 and CI stays green.",
+      scope: 'tests/**, pages/**, helpers/**, fixtures/**',
+      blocking: true,
+      gap: "Severity is 'warn', but `npm run lint` passes --max-warnings=0, so it fails the build. Kept as a warning so a genuine static/SSR use can be justified with an inline disable directive rather than being impossible.",
     },
   },
   {
@@ -108,9 +107,10 @@ export const CONSTITUTION: readonly ConstitutionRule[] = [
     appliesTo: ['pages/**', 'tests/**'],
     topic: 'pages-and-selectors',
     enforcement: {
-      kind: 'review',
-      mechanizable:
-        '`no-restricted-syntax` on a `.locator()` string literal starting with `.`/`#`/`//` or containing `nth-child`; plus `playwright/no-raw-locators` and `no-nth-methods`, which ship with the plugin and are off by default.',
+      kind: 'eslint',
+      rule: 'no-restricted-syntax (CSS-class / id / XPath literal, nth-child)',
+      scope: 'tests/**, pages/**, helpers/**, fixtures/**',
+      blocking: true,
     },
   },
   {
@@ -141,9 +141,11 @@ export const CONSTITUTION: readonly ConstitutionRule[] = [
     appliesTo: ['fixtures/**', 'test-data/**'],
     topic: 'api-and-security',
     enforcement: {
-      kind: 'review',
-      mechanizable:
-        "`no-restricted-syntax` on `MemberExpression[object.name='z'][property.name='object']` under fixtures/**.",
+      kind: 'eslint',
+      rule: 'no-restricted-syntax (bare z.object as a schema value)',
+      scope: 'fixtures/**, test-data/**, helpers/**',
+      blocking: true,
+      gap: 'Deliberately does NOT flag `z.object(...).catchall(z.unknown())` — that chain is the explicit opt-in to a permissive schema, which a Salesforce describe payload legitimately needs.',
     },
   },
   {
@@ -165,9 +167,10 @@ export const CONSTITUTION: readonly ConstitutionRule[] = [
     appliesTo: ['pages/**'],
     topic: 'pages-and-selectors',
     enforcement: {
-      kind: 'review',
-      mechanizable:
-        "`no-restricted-syntax` on `CallExpression[callee.name='expect']` scoped to pages/**. Note `playwright/no-standalone-expect` does NOT cover this — see the comment in eslint.config.mjs.",
+      kind: 'eslint',
+      rule: 'no-restricted-syntax (expect / expect.soft in a page object)',
+      scope: 'pages/**',
+      blocking: true,
     },
   },
   {
@@ -177,9 +180,11 @@ export const CONSTITUTION: readonly ConstitutionRule[] = [
     appliesTo: ['tests/**'],
     topic: 'specs',
     enforcement: {
-      kind: 'review',
-      mechanizable:
-        '`playwright/no-raw-locators` scoped to tests/**, configured for `page.locator` (the skills legitimately use `page.getByText` in specs).',
+      kind: 'eslint',
+      rule: 'no-restricted-syntax (.locator() and page.getBy* in a spec)',
+      scope: 'tests/**/*.spec.ts',
+      blocking: true,
+      gap: '`page.goto` and `page.waitForURL` are intentionally allowed — navigation and URL assertions belong to the spec.',
     },
   },
   {
@@ -189,9 +194,10 @@ export const CONSTITUTION: readonly ConstitutionRule[] = [
     appliesTo: ['tests/**'],
     topic: 'specs',
     enforcement: {
-      kind: 'review',
-      mechanizable:
-        '`no-restricted-syntax` on `NewExpression[callee.name=/Page$|Component$/]` under tests/**. Near-zero false positives.',
+      kind: 'eslint',
+      rule: 'no-restricted-syntax (new *Page / *Component in a test)',
+      scope: 'tests/**/*.spec.ts',
+      blocking: true,
     },
   },
   {
@@ -201,9 +207,10 @@ export const CONSTITUTION: readonly ConstitutionRule[] = [
     appliesTo: ['tests/**', 'pages/**', 'helpers/**', 'test-data/**'],
     topic: 'specs',
     enforcement: {
-      kind: 'review',
-      mechanizable:
-        '`no-restricted-syntax` on string literals matching `^https?://` outside config/ and enums/.',
+      kind: 'eslint',
+      rule: 'no-restricted-syntax (http(s) literal in a spec)',
+      scope: 'tests/**/*.spec.ts',
+      blocking: true,
     },
   },
   {
@@ -213,9 +220,9 @@ export const CONSTITUTION: readonly ConstitutionRule[] = [
     appliesTo: ['test-data/**'],
     topic: 'specs',
     enforcement: {
-      kind: 'review',
-      mechanizable:
-        'The cheapest of all — one line: `test -z "$(find test-data -name \'*.json\')"`. Not yet wired.',
+      kind: 'guard-script',
+      check: 'no *.json under test-data/ (scripts/constitution-guard.ts)',
+      blocking: true,
     },
   },
   {
@@ -225,9 +232,10 @@ export const CONSTITUTION: readonly ConstitutionRule[] = [
     appliesTo: ['tests/**'],
     topic: 'specs',
     enforcement: {
-      kind: 'review',
-      mechanizable:
-        '`no-restricted-syntax` on a `TryStatement` containing an `expect` call, and on `test.setTimeout`. Comment-adjacency for the `// FIXME` requirement is awkward in ESLint — the guard script handles that half.',
+      kind: 'eslint',
+      rule: 'no-restricted-syntax (try/catch around expect, empty catch, test.setTimeout) + guard script for the // FIXME requirement',
+      scope: 'tests/**/*.spec.ts',
+      blocking: true,
     },
   },
   {
@@ -238,9 +246,10 @@ export const CONSTITUTION: readonly ConstitutionRule[] = [
     appliesTo: ['tests/**'],
     topic: 'specs',
     enforcement: {
-      kind: 'review',
-      mechanizable:
-        "`no-restricted-syntax` on `Property[key.name='tag'][value.type='ArrayExpression']` — the suite already uses the single-string form at every call site.",
+      kind: 'eslint',
+      rule: 'no-restricted-syntax (tag array instead of a single string)',
+      scope: 'tests/**/*.spec.ts',
+      blocking: true,
     },
   },
   {

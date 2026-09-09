@@ -25,12 +25,15 @@ test.describe('Products', () => {
     await productsPage.goto();
   });
 
-  test('creates a product', { tag: '@smoke' }, async ({ productsPage, page }) => {
+  test('creates a product', { tag: '@smoke' }, async ({ productsPage }) => {
     await test.step('When I add a product', async () => {
       await productsPage.addProduct('Widget');
     });
     await test.step('Then it appears in the list', async () => {
-      await expect(page.getByText('Widget')).toBeVisible();
+      // The locator lives on the page object (Constitution #9), so the spec asserts on a named
+      // thing rather than re-deriving it. `expect(page.getByText('Widget'))` would work but is a
+      // raw locator in a spec — lint-enforced against, and it puts markup knowledge in two places.
+      await expect(productsPage.rowByName('Widget')).toBeVisible();
     });
   });
 });

@@ -175,6 +175,11 @@ export async function recordAccessFor(
  */
 export async function currentUserId(org: ApiRequest): Promise<string> {
   const { data } = await org.get('/services/oauth2/userinfo', {
+    /* Permissive ON PURPOSE (hence the explicit `.catchall`, which Constitution #6's lint rule
+       treats as the opt-in): `/userinfo` returns a large identity payload whose shape depends on
+       the Connected App's scopes and on org settings, and it gains keys across releases. `user_id`
+       is the only field this helper needs, and failing a run because Salesforce added a claim to
+       its own identity response would be drift detection pointed at the wrong thing. */
     schema: z.object({ user_id: z.string() }).catchall(z.unknown()),
     expectStatus: 200,
   });

@@ -48,6 +48,9 @@ jobs:
       # the parity matrix) was hand-edited or has drifted from rules/constitution.ts. This is what
       # stops the Claude and Copilot rule sets diverging the way they had before they were generated.
       - run: npm run rules:check
+      # Constitution checks ESLint cannot express: no .json under test-data/ (#12), and every
+      # skipped test carries a // FIXME: <ticket> (#13).
+      - run: npm run guard
 
   api:
     name: API tests (no browser)

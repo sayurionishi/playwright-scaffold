@@ -1,0 +1,29 @@
+# Code owners — the human backstop for the Constitution rules no tool enforces.
+#
+# `docs/PARITY-MATRIX.md` lists which rules are machine-enforced. Rule #4 ("never invent a
+# selector, URL, endpoint, or UI string") is irreducibly unmechanizable — it is about process, not
+# syntax — so review is the ONLY gate on it. These paths are where breaking it does the most
+# damage, because a wrong value there is copied into every test written afterwards.
+#
+# ⚠️ REPLACE @sayurionishi with your own team handle when you adopt this scaffold.
+
+# Default owner for everything.
+*                       @sayurionishi
+
+# The AI rule layer. A change here changes what every agent generates from now on, for both Claude
+# and Copilot, so it deserves a second pair of eyes more than most code does.
+/rules/                  @sayurionishi
+/CLAUDE.md               @sayurionishi
+/AGENTS.md               @sayurionishi
+/.claude/                @sayurionishi
+/.github/copilot-instructions.md  @sayurionishi
+/.github/instructions/   @sayurionishi
+/docs/PARITY-MATRIX.md   @sayurionishi
+
+# Enforcement itself. Loosening a rule here silently loosens it everywhere.
+/eslint.config.mjs       @sayurionishi
+/scripts/constitution-guard.ts    @sayurionishi
+
+# Single sources of truth. A wrong value here is invisible and propagates (rule #4, #11).
+/config/                 @sayurionishi
+/enums/                  @sayurionishi

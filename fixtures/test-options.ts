@@ -3,7 +3,7 @@ import { test as apiTest } from './api/api-fixture';
 import { test as pomTest } from './pom/page-object-fixture';
 import { test as helperTest } from './helper/helper-fixture';
 import { test as salesforceOrgTest } from './salesforce/org-fixture';
-import { test as salesforceCleanupTest } from './salesforce/cleanup-fixture';
+import { test as salesforceLightningTest } from './salesforce/lightning-fixture';
 import { test as salesforcePersonaTest } from './salesforce/persona-fixture';
 
 /**
@@ -24,7 +24,7 @@ export const test = mergeTests(
   pomTest,
   helperTest,
   salesforceOrgTest,
-  salesforceCleanupTest,
+  salesforceLightningTest,
   salesforcePersonaTest,
 );
 export { expect } from '@playwright/test';

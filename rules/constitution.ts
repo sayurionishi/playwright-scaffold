@@ -49,6 +49,15 @@ export type Enforcement =
     }
   | { kind: 'guard-script'; check: string; blocking: true }
   | {
+      /**
+       * Enforced by the TYPE SYSTEM rather than a linter — the strongest kind available, because
+       * it cannot be disabled with a comment and it fails at the call site.
+       */
+      kind: 'type-system';
+      how: string;
+      blocking: true;
+    }
+  | {
       kind: 'review';
       /** Whether a cheap mechanical check is possible, and what it would be. */
       mechanizable: false | string;
@@ -155,9 +164,9 @@ export const CONSTITUTION: readonly ConstitutionRule[] = [
     appliesTo: ['tests/**', 'fixtures/**', 'helpers/**'],
     topic: 'api-and-security',
     enforcement: {
-      kind: 'review',
-      mechanizable:
-        'Partly: making `schema` a required option on `ApiRequest` enforces it by TYPE rather than by lint, which is stronger.',
+      kind: 'type-system',
+      how: "`ApiRequest`'s overloads derive the result type from the schema. Without a schema `data` is `unknown`, so the compiler refuses any field access on it — an unvalidated response can no longer masquerade as typed. Legitimately body-less calls (204, status-only, teardown) never touch `data` and still compile.",
+      blocking: true,
     },
   },
   {

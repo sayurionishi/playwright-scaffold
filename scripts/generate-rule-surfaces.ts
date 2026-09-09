@@ -96,6 +96,9 @@ function parityMatrix(): string {
     } else if (e.kind === 'guard-script') {
       mechanism = `Guard script — ${e.check}`;
       blocking = '**Yes**';
+    } else if (e.kind === 'type-system') {
+      mechanism = 'TypeScript (compile error)';
+      blocking = '**Yes**';
     } else {
       mechanism = 'Review only';
       blocking = 'No';
@@ -105,13 +108,17 @@ function parityMatrix(): string {
         ? e.mechanizable === false
           ? 'Not mechanizable — it is about process, not syntax.'
           : `Mechanizable: ${e.mechanizable}`
-        : ((e as { gap?: string }).gap ?? '—');
+        : e.kind === 'type-system'
+          ? e.how
+          : ((e as { gap?: string }).gap ?? '—');
     return `| #${r.id} | ${cell(stripMd(r.forbidden))} | ${cell(mechanism)} | ${blocking} | ${cell(note)} |`;
   });
 
   const blockingCount = CONSTITUTION.filter((r) => {
     const e = r.enforcement;
-    return (e.kind === 'eslint' && e.blocking) || e.kind === 'guard-script';
+    return (
+      (e.kind === 'eslint' && e.blocking) || e.kind === 'guard-script' || e.kind === 'type-system'
+    );
   }).length;
 
   return [

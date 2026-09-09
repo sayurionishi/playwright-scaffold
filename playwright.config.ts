@@ -99,6 +99,12 @@ const TIMEOUTS = {
 
 export default defineConfig({
   testDir: './tests',
+  /**
+   * Org API-limit pre-flight. A silent no-op unless SF_LOGIN_URL is set, so a non-Salesforce
+   * clone is unaffected. See helpers/salesforce/global-setup.ts — `assertApiLimitHeadroom` was
+   * documented as a guarantee in three places but had no callers until this was wired.
+   */
+  globalSetup: './helpers/salesforce/global-setup.ts',
   /* Storage state produced by the auth setup project. */
   fullyParallel: true,
   forbidOnly: isCI,

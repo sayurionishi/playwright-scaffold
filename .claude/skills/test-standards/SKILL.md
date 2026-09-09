@@ -75,8 +75,13 @@ Use the **structured tag option** (Playwright 1.42+) — `test('name', { tag: '@
 `@smoke` (critical, fast) · `@sanity` · `@regression` (broad) · `@api` · `@e2e` · `@security` ·
 `@contract` (a shape/metadata snapshot, not behavior) · `@persona` (who can see/do what) ·
 `@destructive` (mutates shared state — runs `--workers=1`, **wins** over any other tag, requires cleanup).
-Tag the `test`, never the `describe`. `npm run test:smoke` etc. filter by tag via `--grep`.
-([tag docs](https://playwright.dev/docs/test-annotations#tag-tests))
+
+> The scaffold ships NO `@destructive` test, so `npm run test:destructive` currently discovers zero
+> tests and the default `npm test`'s `--grep-invert @destructive` is a no-op. Both are deliberate
+> forward guards: the first destructive test you add is excluded from the default run and forced
+> serial without anyone having to remember to wire it.
+> Tag the `test`, never the `describe`. `npm run test:smoke` etc. filter by tag via `--grep`.
+> ([tag docs](https://playwright.dev/docs/test-annotations#tag-tests))
 
 `@contract` and `@persona` exist mainly for the `salesforce` profile, where metadata drift and the
 permission matrix are distinct test types you want to run on their own cadence — contract checks on every

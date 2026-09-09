@@ -5,7 +5,7 @@
 #   - api                  : backend = SUT. No browser, fast — gates backend PRs in seconds.
 #   - salesforce-contract  : org metadata + permission model. No browser. Auto-skips unless
 #                            SF_LOGIN_URL is set. Cheap enough to gate every push.
-#   - ui                   : functional + e2e, sharded across runners for speed.
+#   - ui                   : functional + e2e, sharded across runners, reports merged into one.
 #
 # The Salesforce UI lane is deliberately NOT here: it needs one org user per persona and a browser,
 # so it belongs on a nightly/pre-release schedule rather than every push. Add it with
@@ -15,8 +15,13 @@
 # The bare scaffold has no app, so the test jobs below AUTO-SKIP until you set a `BASE_URL`
 # repo *variable*. Lint/typecheck always runs (no app needed), so CI stays green on a fresh clone.
 #
+# ⚠️ THAT AUTO-SKIP IS A FOOTGUN, so read the `required` job at the bottom: with no variables set,
+# ONLY `quality` runs and the overall check is green. A green tick therefore does NOT by itself
+# mean tests passed. Use `required` as the branch-protection target, and set STRICT_CI=true once
+# your app URL is configured so a silently-skipped lane fails instead of passing.
+#
 # To enable the test lanes for your app (Settings → Secrets and variables → Actions):
-#   • Variables: BASE_URL, API_URL
+#   • Variables: BASE_URL, API_URL   (optionally STRICT_CI=true)
 #   • Secrets:   TEST_USER_EMAIL, TEST_USER_PASSWORD
 name: Playwright Tests
 
@@ -25,13 +30,22 @@ on:
     branches: [main, master]
   pull_request:
     branches: [main, master]
+  # Lets you re-run against a different target without editing the workflow.
+  workflow_dispatch:
+
+# Two pushes to the same PR would otherwise race 1 + 1 + 4 = 6 runners each. Supersede instead.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+# Least privilege by default. Widen per job only if a job genuinely needs to write.
+permissions:
+  contents: read
 
 env:
   ENVIRONMENT: ci
   BASE_URL: ${{ vars.BASE_URL }}
   API_URL: ${{ vars.API_URL }}
-  TEST_USER_EMAIL: ${{ secrets.TEST_USER_EMAIL }}
-  TEST_USER_PASSWORD: ${{ secrets.TEST_USER_PASSWORD }}
 
 jobs:
   quality:
@@ -40,10 +54,18 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
-        with: { node-version: 20, cache: npm }
+        with:
+          # Single source of truth for the Node version — same file local dev uses, so CI cannot
+          # silently test a version nobody develops on.
+          node-version-file: .nvmrc
+          cache: npm
       - run: npm ci
       - run: npm run typecheck
+      # Fails on WARNINGS too (--max-warnings=0). Without that, every 'warn' rule is decorative —
+      # which is exactly how Constitution #2 came to have zero backing while the docs claimed it
+      # was enforced.
       - run: npm run lint
+      - run: npm run format:check
       # Fails if any generated AI-rule surface (CLAUDE.md §1, the Copilot instructions, AGENTS.md,
       # the parity matrix) was hand-edited or has drifted from rules/constitution.ts. This is what
       # stops the Claude and Copilot rule sets diverging the way they had before they were generated.
@@ -57,10 +79,14 @@ jobs:
     runs-on: ubuntu-latest
     needs: quality
     if: ${{ vars.BASE_URL != '' }} # auto-skips until you configure the app URL
+    env:
+      # Scoped to the jobs that need them — `quality` needs no credentials, so it gets none.
+      TEST_USER_EMAIL: ${{ secrets.TEST_USER_EMAIL }}
+      TEST_USER_PASSWORD: ${{ secrets.TEST_USER_PASSWORD }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
-        with: { node-version: 20, cache: npm }
+        with: { node-version-file: .nvmrc, cache: npm }
       - run: npm ci
       - run: npx playwright test --project=api
       - uses: actions/upload-artifact@v4
@@ -108,7 +134,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
-        with: { node-version: 20, cache: npm }
+        with: { node-version-file: .nvmrc, cache: npm }
       - run: npm ci
       # No `playwright install` — the org project runs no browser. That's the point.
       - run: npx playwright test --project=org
@@ -128,16 +154,121 @@ jobs:
       fail-fast: false
       matrix:
         shard: [1, 2, 3, 4]
+    env:
+      TEST_USER_EMAIL: ${{ secrets.TEST_USER_EMAIL }}
+      TEST_USER_PASSWORD: ${{ secrets.TEST_USER_PASSWORD }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
-        with: { node-version: 20, cache: npm }
+        with: { node-version-file: .nvmrc, cache: npm }
       - run: npm ci
-      - run: npx playwright install --with-deps
-      - run: npx playwright test --project=functional --project=e2e --shard=${{ matrix.shard }}/4
+      # Cache the browser binaries, keyed on the RESOLVED Playwright version from the lockfile.
+      # Without this every shard cold-downloads Chromium on every run — four times per CI run.
+      # The key must include the version: a cached browser from an older Playwright is not
+      # guaranteed to work with a newer one.
+      - name: Resolve Playwright version
+        id: pw
+        run: echo "version=$(node -p "require('@playwright/test/package.json').version")" >> "$GITHUB_OUTPUT"
+      - uses: actions/cache@v4
+        id: browser-cache
+        with:
+          path: ~/.cache/ms-playwright
+          key: ms-playwright-${{ runner.os }}-${{ steps.pw.outputs.version }}
+      - name: Install browsers
+        # On a cache hit the binaries are present but the OS-level shared libraries are not, so the
+        # deps still have to be installed — just not the browsers themselves.
+        run: |
+          if [ "${{ steps.browser-cache.outputs.cache-hit }}" = "true" ]; then
+            npx playwright install-deps
+          else
+            npx playwright install --with-deps
+          fi
+      # `--reporter=blob` instead of html: four shards each writing their own HTML report gives you
+      # four disconnected reports and no single pass/fail view, which makes sharding actively worse
+      # for debugging than not sharding. Blob reports merge (see the `report` job).
+      - run: npx playwright test --project=functional --project=e2e --shard=${{ matrix.shard }}/4 --reporter=blob
       - uses: actions/upload-artifact@v4
         if: ${{ !cancelled() }}
         with:
-          name: ui-report-${{ matrix.shard }}
+          name: blob-report-${{ matrix.shard }}
+          path: blob-report/
+          retention-days: 7
+      # Traces and videos live in test-results/, NOT playwright-report/ — so without this the
+      # merged report links to traces that were never uploaded. Failure-only, short retention:
+      # traces are large and only interesting when something broke.
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: ui-traces-${{ matrix.shard }}
+          path: test-results/
+          retention-days: 7
+
+  report:
+    name: Merged UI report
+    runs-on: ubuntu-latest
+    needs: ui
+    # Runs even when a shard failed — a failed run is exactly when you want the report.
+    if: ${{ !cancelled() && needs.ui.result != 'skipped' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version-file: .nvmrc, cache: npm }
+      - run: npm ci
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: blob-report-*
+          path: all-blob-reports
+          merge-multiple: true
+      - run: npx playwright merge-reports --reporter=html ./all-blob-reports
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ui-report-merged
           path: playwright-report/
           retention-days: 14
+
+  # ── The branch-protection target ─────────────────────────────────────────────────────────────
+  # Protect `required`, not the individual lanes. Two reasons:
+  #
+  #  1. A skipped job reports "success" to branch protection. With no BASE_URL variable set, only
+  #     `quality` runs and everything looks green — so a misconfigured variable silently degrades
+  #     to "no tests ran, PR mergeable". This job makes that visible.
+  #  2. Adding or renaming a lane would otherwise mean editing branch-protection settings.
+  #
+  # Set the STRICT_CI repo variable to `true` once your app URL is configured, and a
+  # silently-skipped lane becomes a failure instead of a pass.
+  required:
+    name: Required checks
+    runs-on: ubuntu-latest
+    needs: [quality, api, salesforce-contract, ui]
+    if: always()
+    steps:
+      - name: Verify no required lane failed
+        run: |
+          echo "quality=${{ needs.quality.result }}"
+          echo "api=${{ needs.api.result }}"
+          echo "salesforce-contract=${{ needs.salesforce-contract.result }}"
+          echo "ui=${{ needs.ui.result }}"
+
+          if [ "${{ needs.quality.result }}" != "success" ]; then
+            echo "::error::quality failed — lint, typecheck, formatting, or a Constitution check."
+            exit 1
+          fi
+          for result in "${{ needs.api.result }}" "${{ needs.ui.result }}" "${{ needs.salesforce-contract.result }}"; do
+            if [ "$result" = "failure" ]; then
+              echo "::error::A test lane failed."
+              exit 1
+            fi
+          done
+
+          if [ "${{ vars.STRICT_CI }}" = "true" ]; then
+            for lane in "api:${{ needs.api.result }}" "ui:${{ needs.ui.result }}"; do
+              if [ "${lane#*:}" = "skipped" ]; then
+                echo "::error::STRICT_CI is on but ${lane%%:*} was SKIPPED — BASE_URL is probably unset. A green check with no tests run is worse than a red one."
+                exit 1
+              fi
+            done
+          else
+            echo "::notice::STRICT_CI is not set. Skipped test lanes count as passing — a green check here does NOT prove tests ran. Set the STRICT_CI variable to 'true' once BASE_URL is configured."
+          fi
+
+          echo "All required checks passed."

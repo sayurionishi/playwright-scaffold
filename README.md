@@ -40,22 +40,36 @@ affected tests, and reports. You stay in the loop at the approval gate.
 
 ## Getting started
 
+Requires **Node 20+** (`.nvmrc` pins it; `engines` warns if you are older). CI uses the same file,
+so it cannot end up testing a version nobody develops on.
+
 ```bash
 # 1. Clone and install
 git clone <your-fork-url> && cd playwright-scaffold
-npm install
-npx playwright install --with-deps
+npm ci                       # `ci` not `install` — respects the lockfile; also installs git hooks
+npm run install:browsers     # playwright install --with-deps
 
 # 2. Configure your environment
 cp env/.env.dev.example env/.env.dev    # fill in BASE_URL / API_URL / creds
 
 # 3. Bootstrap — tailor the scaffold to your app (see below)
-# 4. Run
+
+# 4. Check the scaffold itself is healthy (needs no app, and should be green on a fresh clone)
+npm run typecheck && npm run lint && npm run guard && npm run rules:check
+
+# 5. Run the tests (these DO need a real app at BASE_URL)
 npm run test:api          # backend suite (no browser)
 npm run test:functional   # UI feature tests
 npm run test:e2e          # full journeys
 npm test                  # everything except @destructive
 ```
+
+Step 4 passes with no app configured; step 5 does not, and that is expected — the scaffold ships no
+application to test. The same is true in CI: the test lanes **auto-skip** until you set a `BASE_URL`
+repo variable, so a green check does not by itself mean tests ran. Set the `STRICT_CI` variable to
+`true` once your URL is configured and a silently-skipped lane becomes a failure. Protect the
+`Required checks` job, not the individual lanes — a skipped job otherwise reports success to branch
+protection.
 
 **Step 3 in detail — bootstrap before writing a single test.** Open the repo in Claude Code and say:
 

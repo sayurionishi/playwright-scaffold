@@ -1,6 +1,6 @@
 ---
 name: selectors
-description: Use when choosing a locator for any element, fixing a strict-mode/locator-not-found error, or adapting locator strategy to the app type (generic, controlled-source, Salesforce). Reads the active profile from PROJECT.md.
+description: Use when choosing a locator for any element, fixing a strict-mode violation or a locator-not-found error, or adapting locator strategy to the app type (generic, controlled-source). Reads the active profile from PROJECT.md. For a Salesforce/Lightning org load salesforce-locators instead — this skill defers to it.
 ---
 
 # Selectors — Locator Strategy

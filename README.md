@@ -107,16 +107,16 @@ Claude: Done. Wrote PROJECT.md (profile: controlled), kept 4 projects, wired aut
         Next: want a page object for your login screen, or the first API suite?
 ```
 
-Based on your answers, it picks a **profile** that tunes the defaults to your target, prunes what
-you don't need, and writes `PROJECT.md`. Every later task reads that file, so the scaffold stops
+Based on your answers, it picks a **profile** that tunes the defaults to your target, activates the
+overlays you need, and writes `PROJECT.md`. Every later task reads that file, so the scaffold stops
 being generic and starts being yours.
 
-| Profile      | What it changes                                                                                                    |
-| ------------ | ------------------------------------------------------------------------------------------------------------------ |
-| `generic`    | Playwright's official locator order (role → label → placeholder → text → testId). The default.                     |
-| `controlled` | You can add `data-testid` → testId-first locators. Most stable.                                                    |
-| `salesforce` | Activates the **Salesforce pack** — 6 extra skills plus org auth, personas, and metadata-contract code. See below. |
-| `api-only`   | Prunes the UI projects (and may suggest a backend-native tool instead).                                            |
+| Profile      | What it changes                                                                                                           |
+| ------------ | ------------------------------------------------------------------------------------------------------------------------- |
+| `generic`    | Playwright's official locator order (role → label → placeholder → text → testId). The default.                            |
+| `controlled` | You can add `data-testid` → testId-first locators. Most stable.                                                           |
+| `salesforce` | Activates the **Salesforce pack** — a dedicated skill set plus org auth, personas, and metadata-contract code. See below. |
+| `api-only`   | Leaves the UI projects collecting nothing (and may suggest a backend-native tool instead).                                |
 
 After bootstrap, just describe work in plain language — _"add a page object for the settings page"_,
 _"add API tests for `POST /orders`"_ — and the assistant routes, explores, proposes, and (on

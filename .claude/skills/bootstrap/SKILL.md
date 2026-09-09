@@ -1,6 +1,6 @@
 ---
 name: bootstrap
-description: Use as the FIRST thing on a fresh clone (when PROJECT.md does not exist). Interviews the user about the target app, applies a profile (generic/controlled/salesforce/api-only), prunes what isn't needed, and writes PROJECT.md.
+description: Use as the FIRST thing on a fresh clone (when PROJECT.md does not exist). Interviews the user about the target app, applies a profile (generic/controlled/salesforce/api-only), adds the opt-in overlays the target needs, and writes PROJECT.md.
 ---
 
 # Bootstrap — Day 0
@@ -29,11 +29,39 @@ Schemathesis/Dredd) and stop. Don't scaffold browser projects for that. (CLAUDE.
 Map app type → profile (see `profiles/*.md`): `generic` | `controlled` | `salesforce` | `api-only`.
 Read the chosen profile file; it specifies locator priority, wait notes, and auth handling.
 
-**If the profile is NOT `salesforce`, prune the Salesforce pack** — it's dead weight otherwise:
-`.claude/skills/salesforce*/`, `config/salesforce.config.ts`, `enums/salesforce/`, `helpers/salesforce/`,
-`fixtures/salesforce/`, `pages/salesforce/`, `test-data/salesforce/`, `tests/salesforce/`,
-`scripts/generate-sobject-schemas.ts`, `docs/salesforce/`, the `org` + persona-setup projects in
-`playwright.config.ts`, and the `sf:*` / `test:contract` / `test:personas` scripts in `package.json`.
+### The Salesforce pack is an OPT-IN OVERLAY — do not prune it
+
+**If the profile is NOT `salesforce`: delete nothing.** The pack is inert unless an org is
+configured, so there is nothing to remove:
+
+- `playwright.config.ts` only declares the `org`, `setup:salesforce` and `salesforce` projects when
+  `SF_LOGIN_URL` is set. Unset, they do not exist — `npm test` never reaches them.
+- The Salesforce fixtures stay merged in `fixtures/test-options.ts` and cost nothing: Playwright
+  fixtures are **lazy**, so one that no test destructures never runs. `salesforceConfig` reads every
+  variable through a getter, so no `SF_*` var is ever required.
+- The `salesforce*` skills load only on demand, and their descriptions carry a profile guard.
+
+⚠️ **This instruction used to say the opposite, and following it broke the build.** The old prune
+list omitted `fixtures/test-options.ts` — the one file outside `*/salesforce/` that imports the
+Salesforce fixtures — so deleting `fixtures/salesforce/` produced an unresolved-module error in
+**every spec**. Worse, pruning is a fork: a pruned clone diverges from upstream on day one and can
+never merge an upstream fix. Leaving the pack in place keeps the project mergeable.
+
+If a team genuinely wants the files gone (repo size, or to stop the directories showing in search),
+that is a deliberate one-way decision to make explicitly and separately — not a bootstrap step. Add
+`search.exclude` entries first; that solves the real complaint without forking.
+
+### Two tiers, so nobody pays for what they do not use
+
+| The target is…                      | Add                                                          |
+| ----------------------------------- | ------------------------------------------------------------ |
+| not Salesforce                      | nothing — core only                                          |
+| Salesforce, not FSC                 | tier 2: set `SF_LOGIN_URL`; the 8 `salesforce*` skills apply |
+| Salesforce Financial Services Cloud | tier 2 **plus** `salesforce-fsc`                             |
+
+Tier 3 is one extra question in Phase 3b, not a guess. Ask: **"Is this Financial Services Cloud?"**
+FSC ships the `FinServ__` managed package, householding and reciprocal roles; if the answer is no,
+`salesforce-fsc` is noise and should not be routed to. Record the answer in `PROJECT.md`.
 
 **If the profile IS `salesforce`, go to Phase 3b instead of Phase 4.**
 
@@ -51,28 +79,48 @@ state you cannot read from a repo.
 2. **Auth strategy** (`salesforce-auth`). `jwt` for CI needs a Connected App — that's a human-with-Setup
    task; hand them the 5 steps from the skill and confirm step 4 (app assigned to the test users'
    profile/permset) is done. `sfdx` is fine locally.
-3. **Personas.** Which users/profiles/permission sets matter? Write them into
-   `test-data/salesforce/personas.ts` and add one `SF_USERNAME_<KEY>` env var per persona.
-4. **Objects in scope.** Which sObjects will the suite touch? Then **run the generator**:
+3. **Financial Services Cloud?** Ask explicitly. If yes, route to `salesforce-fsc` for the
+   `FinServ__` data model, householding roll-ups and reciprocal roles, and record `fsc: true` in
+   `PROJECT.md`. If no, do not load it — it is a second-tier overlay and irrelevant elsewhere.
+   Person Accounts are NOT an FSC question: any B2C org can have them enabled, and they live in
+   `salesforce-data`. Ask whether the org uses them regardless of the FSC answer.
+4. **Personas.** Which users/profiles/permission sets matter? Write them into
+   `test-data/salesforce/personas.ts` and add one `SF_USERNAME_<KEY>` env var per persona. You do
+   NOT need all of them to start: `setup:salesforce` skips any persona whose username is unset and
+   prints a summary, so you can add them incrementally.
+5. **Objects in scope.** Which sObjects will the suite touch? Then **run the generator**:
    `npm run sf:schemas -- Account Contact Opportunity` — this is what makes rule #15 satisfiable.
    Commit the generated schemas; they are the drift snapshot.
-5. **API version.** Pin `SF_API_VERSION` and run the contract spec to confirm the org supports it.
-6. **Verify the assumptions.** Walk `docs/salesforce/VERIFY-BEFORE-FIRST-RUN.md` with the user. It lists
+6. **API version.** Pin `SF_API_VERSION` and run the contract spec to confirm the org supports it.
+7. **Verify the assumptions.** Walk `docs/salesforce/VERIFY-BEFORE-FIRST-RUN.md` with the user. It lists
    every org-dependent thing the pack assumes (session injection mechanism, IP locking, which screens use
    `ui-api` vs `/aura`, whether Duplicate Rules are on). Do NOT skip this — the pack ships patterns that
    are correct in general and need confirming per org.
-7. Then continue with Phase 4 (env, enums, example files) and Phase 5.
+8. **Declare the org shape.** Populate `test-data/salesforce/contracts/org-shape.ts` with the
+   record types and picklist values the suite depends on, then run `npm run test:contract`. This is
+   the programmatic half of step 7 — a sandbox refresh wipes hand-made config, and without this
+   pre-flight that surfaces as dozens of locator-shaped UI failures instead of one clear message.
+9. Then continue with Phase 4 (env, enums, example files) and Phase 5.
 
 ## Phase 4 — Apply the profile (propose the diff first, then edit on approval)
 
 - **Selector priority:** the active profile is recorded in `PROJECT.md`; the `selectors` skill reads it. (No code change needed unless flipping example locators in `pages/login.page.ts`.)
-- **Projects:** in `playwright.config.ts`, remove projects the target doesn't use:
-  - api-only → delete `setup`, `functional`, `e2e`; keep `api`.
-  - UI-only → keep `setup`/`functional`/`e2e`; you may keep `api` for setup/teardown.
-  - no auth → delete the `setup` project + its `dependencies`, and delete `helpers/auth/auth.setup.ts`, and drop `storageState` from UI projects.
+- **Projects:** most of this is now automatic — check before editing.
+  - **no auth** → nothing to do. The `setup` project only exists when `TEST_USER_EMAIL` is set, and
+    the UI projects derive their `dependencies` and `storageState` from the same flag. Leave
+    `helpers/auth/auth.setup.ts` in place; it is never collected without the variable.
+  - **not Salesforce** → nothing to do (see Phase 3).
+  - **api-only** → the UI projects are the only ones worth removing by hand, and only if you want
+    them out of `--list` output. They collect zero tests once you delete the example specs.
+  - **UI-only** → keep `api`; it is how UI tests arrange state quickly.
 - **Env:** create `env/.env.<env>` from the example; fill `BASE_URL`/`API_URL`/creds. **`BASE_URL` is the app ROOT** (e.g. `https://demo.playwright.dev`) — do NOT bake a path segment into it (e.g. `.../todomvc`), or a `goto('/')` will drop the path. Put path segments in `enums/util/routes.ts` and navigate to them.
 - **Enums/config:** replace the example endpoints/routes/messages with the target's real ones (verify live / against OpenAPI — don't guess).
 - **Example files — ASK the user, don't decide silently:** the scaffold ships example page objects + specs. Ask whether to **(a) delete** them or **(b) keep them as reference**. If kept, the example **specs** (`tests/**/*.spec.ts` — `login`, `users`, `users.security`, `user-journey`) MUST be moved out of `tests/` (e.g. to an `examples/` folder) — they target a fake app and **will run and FAIL** if left in a test project. Example page objects/components are harmless to keep.
+
+  ⚠️ If you move the specs to `examples/`, add `examples/**` to the `ignores` list in
+  `eslint.config.mjs`. The Playwright lint rules are scoped to the spec glob, so a moved example
+  silently loses every Constitution check while still being the file people copy from — the golden
+  reference would be the least-checked code in the repo.
 
 ## Phase 5 — Write PROJECT.md
 
@@ -91,3 +139,6 @@ Point the user at the first real task (usually a page object via `page-objects`,
 - Don't generate tests before `PROJECT.md` exists.
 - Don't silently delete OR silently keep the example files — **ask** (see Phase 4). If the user keeps them, move the example specs out of `tests/` so they don't run and fail against the real app.
 - Don't pick a profile for the user silently — confirm the app type first.
+- Don't prune the Salesforce pack. It is inert without `SF_LOGIN_URL`, and the old prune list broke
+  every spec by missing `fixtures/test-options.ts`.
+- Don't load `salesforce-fsc` unless the user confirmed Financial Services Cloud.

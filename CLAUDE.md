@@ -14,7 +14,7 @@ coverage, using the Page Object Model, fixture-based DI, deterministic waits, an
 
 If `PROJECT.md` does NOT exist in the repo root, this is a fresh clone. **Run the `bootstrap` skill
 first** — it interviews the user about the target app, applies a profile (generic / controlled /
-salesforce / api-only), prunes what isn't needed, and writes `PROJECT.md`. Do not generate tests
+salesforce / api-only), activates the overlays the target needs, and writes `PROJECT.md`. Do not generate tests
 against an unconfigured scaffold.
 
 If `PROJECT.md` exists, read it — it records the target's profile, auth model, locator strategy, and
@@ -170,52 +170,44 @@ wrong one loaded.
 | `generic`    | role → label → placeholder → text → testId | Playwright-official order; default      |
 | `controlled` | **testId** → role → label → text           | You can add `data-testid`; most stable  |
 | `salesforce` | role → label → text → testId               | Full pack: extra skills + code. See §7. |
-| `api-only`   | n/a                                        | UI projects pruned; reconsider §5 first |
+| `api-only`   | n/a                                        | UI projects collect nothing; see §5     |
 
 The `selectors` and `wait-strategy` skills read the active profile from `PROJECT.md`.
 
 ---
 
-## 7. The Salesforce pack
+## 7. The Salesforce pack (opt-in overlay)
 
-`salesforce` is not just a locator preference — it ships its own skills (§4) and its own code:
+Set `SF_LOGIN_URL` and the pack activates: `playwright.config.ts` declares the `org`,
+`setup:salesforce` and `salesforce` projects, and the `salesforce*` skills apply. Leave it unset and
+none of that exists — the fixtures stay merged and cost nothing, because Playwright fixtures are
+lazy and `salesforceConfig` reads every variable through a getter. **There is nothing to prune.**
 
-```
-config/salesforce.config.ts           org URLs, API version pin, admin + subject personas
-enums/salesforce/                     sObject names, ui-api paths, /lightning/* routes
-helpers/salesforce/                   auth · describe · soql · lightning waits · contract · permissions
-fixtures/salesforce/                  adminOrg + org + orgAs · persona contexts · metadata schemas
-pages/salesforce/                     Lightning component objects (combobox, datatable, modal, toast…)
-test-data/salesforce/personas.ts      the persona lattice (9 personas, one axis apart)
-test-data/salesforce/contracts/       the contract AS DATA — shape + CRUD + FLS per persona
-tests/salesforce/contract/            org project: drift · field shape · permissions   (no browser)
-tests/salesforce/ui/                  salesforce project: behaviour as the subject persona
-scripts/generate-sobject-schemas.ts   describe → Zod          (run at bootstrap, per org)
-scripts/generate-visible-fields.ts    per-persona visible-field sets  (leak detection)
-```
+Code lives under `*/salesforce/` in each top-level directory (`config`, `enums`, `helpers`,
+`fixtures`, `pages`, `test-data`, `tests`), plus `scripts/generate-*.ts`. `ls` is more current than
+a list here.
 
-Four things differ from every other profile, and they are the whole reason the pack exists:
+Four things differ from every other profile, and they are the whole reason the pack exists. These
+two identities are the ones to get right — everything else is recoverable:
 
-1. **Two identities, not one.** `adminOrg` (System Admin) ARRANGES and TEARS DOWN; the subject persona
-   ACTS and ASSERTS. Arrange as a restricted user → teardown silently cannot delete → data leaks.
-   Assert as an admin → Modify All Data bypasses sharing and FLS → the test passes with the permission
-   model completely broken. UI projects default to `standardUser`, never admin.
+1. **Two identities, not one.** `adminOrg` (System Admin) ARRANGES and TEARS DOWN; the subject
+   persona ACTS and ASSERTS. Arrange as a restricted user → teardown silently cannot delete → data
+   leaks. Assert as an admin → Modify All Data bypasses sharing and FLS → **the test passes with the
+   permission model completely broken.** UI projects default to `standardUser`, never admin.
 2. **Auth is org auth, not a login form.** The JWT bearer flow mints a session without touching the
-   login UI — which is also how you legitimately get past mandatory MFA. Never automate an MFA challenge.
-3. **The API contract is org metadata.** Salesforce ships no OpenAPI. `describe` _is_ the contract, and
-   it changes the moment an admin clicks Save — so drift detection is a first-class test type (`@contract`).
-4. **Every assertion has a "for whom".** The permission model is the product. Personas form a lattice
-   (each differs on exactly one axis), and absence assertions need a positive control that is **not**
-   an admin — an admin passes via Modify All Data even with the grant broken.
+   login UI — which is also how you legitimately get past mandatory MFA. Never automate an MFA
+   challenge.
+3. **The API contract is org metadata.** Salesforce ships no OpenAPI. `describe` _is_ the contract,
+   and it changes the moment an admin clicks Save — so drift detection is a first-class test type
+   (`@contract`).
+4. **Every assertion has a "for whom".** The permission model is the product, and an absence
+   assertion needs a positive control that is **not** an admin.
 
-**Layering is not optional here** (`docs/salesforce/TEST-ARCHITECTURE.md`):
-
-| Layer    | Project            | Asserts                                                                                                                                  |
-| -------- | ------------------ | ---------------------------------------------------------------------------------------------------------------------------------------- |
-| Contract | `org` (no browser) | types, lengths, picklist VALUES, references, record types, permission-set grants, object CRUD, per-persona FLS, exact visible-field sets |
-| UI       | `salesforce`       | **behaviour only** — workflows, persistence, and whether the screen _honours_ the model above                                            |
-
-Field metadata and permission matrices in the UI are a wrong-layer error: ~100× the cost, and UI
+**Layering is not optional here.** The contract layer (`org`, no browser) asserts types, picklist
+values, grants, CRUD and per-persona FLS; the UI layer (`salesforce`) asserts **behaviour only**.
+Field metadata or a permission matrix in the UI is a wrong-layer error: ~100× the cost, and UI
 absence is ambiguous (FLS? page layout? record type?) where the API tells you which.
 
-If the profile is NOT `salesforce`, `bootstrap` prunes all of the above.
+The layer table, the persona lattice and the arrange/assert rule in full:
+**`docs/salesforce/TEST-ARCHITECTURE.md`** and the `salesforce` skill. Financial Services Cloud adds
+a second tier (`salesforce-fsc`), loaded only when `PROJECT.md` records it.

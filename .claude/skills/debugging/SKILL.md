@@ -1,6 +1,6 @@
 ---
 name: debugging
-description: Use when a test fails, flakes, or behaves unexpectedly. Investigate and fix the root cause — never suppress, never bump timeouts, never silently skip.
+description: Use when a test has already failed and you need to find out WHY — reading the error, classifying the failure mode, reproducing it, fixing the root cause. Never suppress, never bump a timeout, never silently skip. If you already know the cause is timing, go straight to wait-strategy instead.
 ---
 
 # Debugging

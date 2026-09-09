@@ -25,8 +25,62 @@ import { LightningRoutes } from '../../enums/salesforce/lightning-routes';
  * Iterates UI_PERSONAS, not ALL_PERSONAS: an API-only identity (`uiCapable: false`, e.g. an
  * integration user) has no UI licence, so trying to build a browser session for it would fail here
  * for a correct reason and block the whole run.
+ *
+ * …and within those, only the ones whose username is actually configured — see `configured` below.
  */
-for (const persona of UI_PERSONAS) {
+/**
+ * Which personas have a username configured.
+ *
+ * Computed at COLLECTION time so `--list` reflects what will really run, and so an unconfigured
+ * persona is visibly absent rather than a runtime failure.
+ *
+ * ── WHY THIS EXISTS ───────────────────────────────────────────────────────────────────────────
+ * This fan-out used to be all-or-nothing: `salesforceConfig.username()` throws for a missing
+ * `SF_USERNAME_*`, one red setup test fails the project, and Playwright then marks the entire
+ * `salesforce` project SKIPPED because its dependency failed. So the first run required all eight
+ * org users, each with the Connected App assigned, before ANY UI test could execute — which makes
+ * incremental adoption impossible and is the single most likely reason a team gives up here.
+ *
+ * Now an unconfigured persona is simply not collected, and the summary below says which and how to
+ * add them. A persona whose username IS set but whose session fails still fails loudly: that is a
+ * real problem (usually the Connected App not assigned) and must not be silently skipped.
+ */
+const configured = UI_PERSONAS.filter((persona) => {
+  try {
+    salesforceConfig.username(persona.key);
+    return true;
+  } catch {
+    return false;
+  }
+});
+
+const unconfigured = UI_PERSONAS.filter((persona) => !configured.includes(persona));
+
+if (unconfigured.length > 0) {
+  console.warn(
+    `ℹ️  setup:salesforce is building sessions for ${configured.length}/${UI_PERSONAS.length} ` +
+      `personas. Not configured: ${unconfigured.map((p) => p.key).join(', ')}.\n` +
+      '   Add one env var per persona to enable it, e.g. ' +
+      `SF_USERNAME_${unconfigured[0]?.key.replace(/([a-z0-9])([A-Z])/g, '$1_$2').toUpperCase()}.\n` +
+      '   Tests that assert as a missing persona will fail on its absence — that is deliberate; a ' +
+      'persona test that silently skips is indistinguishable from one that passes.',
+  );
+}
+
+if (configured.length === 0) {
+  // Not a skip: an org IS configured (this project only exists when SF_LOGIN_URL is set), so zero
+  // usable personas is a misconfiguration that must be visible rather than a quiet no-op.
+  setup('at least one Salesforce persona is configured', async () => {
+    expect(
+      configured.length,
+      'SF_LOGIN_URL is set but no SF_USERNAME_<PERSONA> variable is. Every Salesforce UI test ' +
+        'needs at least one persona session. Add SF_USERNAME_STANDARD_USER (or whichever persona ' +
+        'SF_DEFAULT_PERSONA names) and re-run. See the `salesforce-auth` skill.',
+    ).toBeGreaterThan(0);
+  });
+}
+
+for (const persona of configured) {
   setup(`authenticate ${persona.key}`, async ({ browser }) => {
     const session = await getOrgSession(persona.key);
 

@@ -1,6 +1,6 @@
 ---
 name: data-strategy
-description: Use when you need test data — dynamic happy-path values (Faker factories) or curated invalid/boundary inputs (static). Defines where each kind of value lives.
+description: Use when you need test data for a NON-Salesforce target — dynamic happy-path values (Faker factories) or curated invalid/boundary inputs (static). Defines where each kind of value lives. For creating or cleaning up records in a Salesforce org, load salesforce-data instead.
 ---
 
 # Data Strategy

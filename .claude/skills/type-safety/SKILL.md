@@ -1,6 +1,6 @@
 ---
 name: type-safety
-description: Use when writing or refactoring a Zod schema, converting an `any` to a real type, or designing typed request/response contracts. Enforces strict typing and runtime validation.
+description: Use when writing or refactoring a Zod schema, converting an `any` to a real type, or designing typed request/response contracts. Enforces strict typing and runtime validation. For Zod schemas describing Salesforce sObjects, load salesforce-metadata-contract instead — describe is the contract there.
 ---
 
 # Type Safety

@@ -51,17 +51,17 @@ which axis broke. A persona differing on three axes at once produces failures yo
 The four axes: **CRUD** (object-level) · **FLS** (field-level) · **SHARING** (which records) ·
 **UI** (can it use a browser at all).
 
-| Persona           | CRUD            | FLS             | Sharing               | UI     | Purpose  | Isolates                |
-| ----------------- | --------------- | --------------- | --------------------- | ------ | -------- | ----------------------- |
-| `sysAdmin`        | all + ModifyAll | all             | bypasses              | yes    | arrange  | — never asserted        |
-| `fullAccess`      | CRUD+D          | all fields      | normal                | yes    | control  | grant correctness       |
-| `standardUser`    | CRU, no D       | all fields      | normal                | yes    | subject  | the realistic default   |
-| `limitedFields`   | CRU, no D       | **some hidden** | normal                | yes    | subject  | **FLS**                 |
-| `readOnly`        | **R only**      | all fields      | normal                | yes    | subject  | **CRUD**                |
-| `noAccess`        | **none**        | none            | normal                | yes    | boundary | **the deny path**       |
-| `manager`         | CRU             | all             | **above** subordinate | yes    | control  | **sharing** (sees down) |
-| `subordinate`     | CRU             | all             | **below** manager     | yes    | subject  | **sharing** (not up)    |
-| `integrationUser` | CRUD (API)      | all             | normal                | **no** | boundary | **UI axis**             |
+| Persona           | CRUD            | FLS             | Sharing               | UI     | Purpose  | Isolates                           |
+| ----------------- | --------------- | --------------- | --------------------- | ------ | -------- | ---------------------------------- |
+| `sysAdmin`        | all + ModifyAll | all             | bypasses              | yes    | arrange  | — never asserted                   |
+| `fullAccess`      | CRUD+D          | all fields      | normal                | yes    | control  | grant correctness, no admin bypass |
+| `standardUser`    | CRU, no D       | all fields      | normal                | yes    | subject  | the realistic default              |
+| `limitedFields`   | CRU, no D       | **some hidden** | normal                | yes    | subject  | **FLS**                            |
+| `readOnly`        | **R only**      | all fields      | normal                | yes    | subject  | **CRUD**                           |
+| `noAccess`        | **none**        | none            | normal                | yes    | boundary | **the deny path**                  |
+| `manager`         | CRU             | all             | **above** subordinate | yes    | control  | **sharing** (sees down)            |
+| `subordinate`     | CRU             | all             | **below** manager     | yes    | subject  | **sharing** (can't see up)         |
+| `integrationUser` | CRUD (API)      | all             | normal                | **no** | boundary | **UI axis**                        |
 
 Read the pairs — this is the whole point:
 

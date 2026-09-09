@@ -5,6 +5,12 @@ import { ErrorResponseSchema } from '../../fixtures/api/schemas/_error.schema';
 import { makeUser } from '../../test-data/factories/user.factory';
 
 /**
+ * ⭐ REFERENCE IMPLEMENTATION — keep this green.
+ *
+ * The golden API spec (the backend is the SUT) — what the assistant copies when asked
+ * for a new one, so it must obey every rule it demonstrates. If a Constitution rule changes, re-read this file:
+ * a reference that violates the current rules teaches the violation.
+ *
  * EXAMPLE API suite — the backend is the system under test. Runs in the `api` project
  * (no browser). Every test is tagged @api.
  *

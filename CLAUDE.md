@@ -60,7 +60,9 @@ deliberately in one place: the previous hand-written claim here ("a hook (ESLint
 There is no Claude Code hook in this repo. The blocking gate is the CI `quality` job
 (`typecheck` + `lint` + `rules:check`); `.husky/pre-commit` runs `lint-staged` over staged files.
 
-⚠️ The rule table above is generated. To change a rule, edit `rules/constitution.ts` and run
+⚠️ The rule table above is generated. **Maintaining this layer has its own rules** —
+`docs/MAINTAINING-THE-AI-LAYER.md` (what to encode, how to write a skill description, why a false
+enforcement claim is worse than none). To change a rule, edit `rules/constitution.ts` and run
 `npm run rules:generate` — that rewrites this table, the Copilot instructions, `AGENTS.md`, and the
 parity matrix together, so Claude and Copilot cannot drift apart. `npm run rules:check` fails CI if
 a generated block was hand-edited.

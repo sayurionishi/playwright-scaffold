@@ -28,6 +28,7 @@ import {
   scopeGaps,
   type Topic,
 } from '../rules/constitution';
+import { TASK_PROMPTS, type TaskPrompt } from '../rules/tasks';
 
 const ROOT = process.cwd();
 const CHECK_ONLY = process.argv.includes('--check');
@@ -151,6 +152,38 @@ function parityMatrix(): string {
   ].join('\n');
 }
 
+/**
+ * A Claude Code slash command. Claude asks for missing inputs conversationally, so the
+ * `${input:…}` placeholders are rewritten into plain prose rather than left as literal syntax.
+ */
+function claudeCommand(task: TaskPrompt): string {
+  const body = task.inputs === undefined ? task.body : stripInputSyntax(task.body);
+  const ask =
+    task.inputs === undefined
+      ? ''
+      : `\nIf the user has not already said ${task.inputs
+          .map((i) => `**${i.placeholder}**`)
+          .join(' and ')}, ask before starting.\n`;
+  return `---\ndescription: ${task.description}\n---\n\n${body}\n${ask}`;
+}
+
+/** A Copilot prompt file. Keeps the `${input:…}` syntax, which VS Code prompts for. */
+function copilotPrompt(task: TaskPrompt): string {
+  const front = ['---', `description: ${task.description}`, 'mode: agent', '---', ''].join('\n');
+  return `${front}\n${task.body}\n`;
+}
+
+/**
+ * `${input:key}` → `<key>`, for the tool that asks conversationally.
+ *
+ * Angle brackets rather than the placeholder prose: substituting the prose produced sentences like
+ * "at the **the layer** layer", and a reader cannot tell a filled-in value from a placeholder.
+ * `<layer>` is unambiguously a blank to fill.
+ */
+function stripInputSyntax(body: string): string {
+  return body.replace(/\$\{input:([^:}]+)(?::[^}]*)?\}/g, (_match, key) => `<${key}>`);
+}
+
 /** Copilot/AGENTS lists render as plain text, so drop the markdown emphasis that suits a table. */
 function stripMd(s: string): string {
   return s.replace(/\*\*/g, '');
@@ -186,6 +219,11 @@ const SURFACES: readonly Surface[] = [
     topic,
     render: () => topicRules(topic),
   })),
+  // Task prompts: fully generated in both formats, so the two tools cannot drift.
+  ...TASK_PROMPTS.flatMap((task) => [
+    { file: `.claude/commands/${task.name}.md`, render: () => claudeCommand(task) },
+    { file: `.github/prompts/${task.name}.prompt.md`, render: () => copilotPrompt(task) },
+  ]),
 ];
 
 // ── engine ────────────────────────────────────────────────────────────────────────────────────

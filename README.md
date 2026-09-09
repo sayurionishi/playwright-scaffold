@@ -132,8 +132,9 @@ Salesforce isn't "a web app you test" — it's a platform where **your configura
 test** and most of the UI is generated. So the `salesforce` profile is more than a locator preference:
 
 **A dedicated skill pack** — `salesforce` (the hub: what to test and, importantly, what _not_ to),
-`salesforce-auth`, `salesforce-locators`, `salesforce-waits`, `salesforce-personas`,
-`salesforce-metadata-contract`, `salesforce-data`.
+`salesforce-auth`, `salesforce-locators`, `salesforce-waits`, `salesforce-async`,
+`salesforce-personas`, `salesforce-metadata-contract`, `salesforce-data` — plus `salesforce-fsc`
+as a second-tier overlay, added only for Financial Services Cloud orgs so nobody else pays for it.
 
 **Four things that genuinely differ from every other profile:**
 

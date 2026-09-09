@@ -163,6 +163,79 @@ test to retry**. `LIMIT_EXCEEDED` / `System.LimitException` in a response is a b
 Bulk-sensitive Apex is worth testing deliberately: insert 200 records in one call and assert the trigger
 still behaves. That's a real test that finds real bugs.
 
+## Person Accounts — the shape that breaks a generic "create an Account"
+
+Any B2C org can have Person Accounts enabled — retail, nonprofit, healthcare, and Financial
+Services Cloud. It is a **core platform feature, not an FSC one**, so do not assume you are safe
+because the org is not FSC.
+
+A Person Account is one record that is _both_ an Account and a Contact:
+
+- `IsPersonAccount = true`, and it is created against a **person-account record type**, not a
+  business one.
+- Many fields live on the **Contact** side but surface on the Account: `FirstName`, `LastName`,
+  `PersonEmail`, `PersonBirthdate`, `PersonMailingStreet`.
+- **`Name` is a read-only computed value.** Setting it fails. Set `FirstName` / `LastName`.
+- Some relationships expect a Contact Id and some an Account Id for what a user sees as the same
+  person. Read which one from `describe`; do not infer it.
+
+```ts
+// ❌ business-account shape — fails outright on a person-account record type
+await trackedRecords.create(SObjects.ACCOUNT, { Name: 'Jane Doe' });
+
+// ✅ person account: pinned record type + name parts
+const recordTypeId = await recordTypeIdFor(adminOrg, SObjects.ACCOUNT, 'PersonAccount');
+await trackedRecords.create(SObjects.ACCOUNT, {
+  FirstName: 'Jane',
+  LastName: uniqueName('Doe'),
+  RecordTypeId: recordTypeId,
+});
+```
+
+**Pin the record type explicitly.** Which one you get otherwise depends on the running user's
+default, so the same test arranges different data for different personas — and that is invisible
+until an assertion about layout or required fields fails for one persona only.
+
+## Managed packages: resolve namespaces, never hardcode them
+
+The same logical field is `acme__Widget__c` in one org and unprefixed in another, depending on
+whether the package is installed or the org IS the package's developer org. A hardcoded prefix
+works in exactly the org you wrote it in.
+
+Resolve the API name from `describe` at runtime (rule #15 again: object and field API names are org
+state, not source). Getting this wrong fails as `INVALID_FIELD`, which reads like a typo rather
+than an environment difference — so it costs an hour before anyone suspects the namespace.
+
+## Arrange is not inert — automation fires, even as admin
+
+Creating a record as System Admin still runs triggers, Flows, validation rules and duplicate rules.
+Modify All Data bypasses **sharing and FLS**, not automation. Two consequences worth planning for:
+
+- **Arrange can fail** on a validation rule that has nothing to do with your test. That is not a
+  test bug — it is the org telling you the record you invented is not one the business allows.
+  Build a valid record, do not disable the rule.
+- **Arrange can silently create MORE than you asked for.** A Flow that creates a related task, an
+  Opportunity Contact Role, a household member. Your teardown must remove those too — query for
+  them and register them with `trackedRecords.track(object, id)`, or they accumulate. See
+  `salesforce-async`.
+
+### Duplicate and matching rules block creation
+
+`DUPLICATES_DETECTED` / `DUPLICATE_VALUE` on create is common on Account, Contact and Lead, where
+orgs ship dupe rules by default. Randomise enough of the record to clear them —
+`uniqueName()` handles the name, but a rule matching on email or phone needs those varied too — or
+arrange through a permission that bypasses the rule if your org has one.
+
+### Org-global config is NOT per-record
+
+Custom Settings, Custom Metadata, and Hierarchy settings are org-wide or per-profile — **not**
+per-record. A parallel worker that mutates one changes behaviour for every other test in the run,
+including tests in other files that are mid-assertion. Namespacing record data (above) does nothing
+for this.
+
+Treat org-global configuration as **read-only during a run**. If a test genuinely needs different
+global config, it is a `@destructive` test: serial, and it restores the previous value in teardown.
+
 ## Static vs dynamic data (same as generic)
 
 - **Factories** (`test-data/salesforce/factories/`) — dynamic happy-path drafts, unique per call.
@@ -187,6 +260,11 @@ and a picklist value that was valid before an admin removed it.
 - Don't run a write-heavy suite without the `/limits` guard.
 - Don't hardcode record Ids. They're org-specific and sandbox refreshes change them.
 - Don't write to production.
+- Don't set `Name` on a Person Account — set `FirstName`/`LastName`; `Name` is computed.
+- Don't create a person without pinning the person-account record type.
+- Don't hardcode a managed-package namespace prefix — resolve it from `describe`.
+- Don't mutate Custom Settings / Custom Metadata / Hierarchy settings from a parallel test.
+- Don't assume arrange created exactly one record.
 
 ## Checklist
 
@@ -198,3 +276,8 @@ and a picklist value that was valid before an admin removed it.
 - [ ] No mutable record shared between parallel tests; serial + `@destructive` where needed.
 - [ ] `/limits` guard in place for write-heavy runs.
 - [ ] Invalid/boundary values in `test-data/static/`, not in the factory.
+- [ ] Person-account orgs: record type pinned, name set via `FirstName`/`LastName`.
+- [ ] Managed-package field names resolved from `describe`, not literals.
+- [ ] Teardown covers automation-created child records, not just the inserted one.
+- [ ] Test data randomised enough to clear duplicate/matching rules.
+- [ ] No org-global setting mutated outside a serial `@destructive` test.

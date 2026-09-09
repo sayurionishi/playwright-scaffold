@@ -133,17 +133,19 @@ API-as-setup is a fixture inside UI tests; API-as-SUT is the `api` project.
 ### Salesforce (only when `PROJECT.md` profile is `salesforce`)
 
 These override the generic skills above for anything Salesforce-specific. `salesforce` is the hub —
-load it first if you're unsure which of the six applies.
+load it first if you're unsure which sibling applies.
 
-| You want to…                                        | Skill                          | Chains to                           |
-| --------------------------------------------------- | ------------------------------ | ----------------------------------- |
-| Understand what to test (and NOT test) in an org    | `salesforce`                   | all of the below                    |
-| Authenticate to an org / get past MFA / SSO         | `salesforce-auth`              | `config`, `salesforce-personas`     |
-| Locate a Lightning element; fix a strict-mode clash | `salesforce-locators`          | `selectors`, `page-objects`         |
-| Make a Lightning test wait reliably                 | `salesforce-waits`             | `wait-strategy`, `debugging`        |
-| Test who can see/do what (profiles, permsets, FLS)  | `salesforce-personas`          | `salesforce-auth`, `test-standards` |
-| Guard against admin-made metadata drift             | `salesforce-metadata-contract` | `type-safety`, `api-testing`        |
-| Create/clean up org records for a test              | `salesforce-data`              | `data-strategy`, `fixtures`         |
+| You want to…                                        | Skill                          | Chains to                             |
+| --------------------------------------------------- | ------------------------------ | ------------------------------------- |
+| Understand what to test (and NOT test) in an org    | `salesforce`                   | all of the below                      |
+| Authenticate to an org / get past MFA / SSO         | `salesforce-auth`              | `config`, `salesforce-personas`       |
+| Locate a Lightning element; fix a strict-mode clash | `salesforce-locators`          | `selectors`, `page-objects`           |
+| Make a Lightning test wait reliably                 | `salesforce-waits`             | `wait-strategy`, `debugging`          |
+| Test who can see/do what (profiles, permsets, FLS)  | `salesforce-personas`          | `salesforce-auth`, `test-standards`   |
+| Guard against admin-made metadata drift             | `salesforce-metadata-contract` | `type-safety`, `api-testing`          |
+| Create/clean up org records for a test              | `salesforce-data`              | `data-strategy`, `fixtures`           |
+| Fix a test asserting too soon after a create/save   | `salesforce-async`             | `wait-strategy`, `salesforce-data`    |
+| Test Financial Services Cloud specifically          | `salesforce-fsc`               | `salesforce-data`, `salesforce-async` |
 
 If nothing matches, default to `common-tasks` or ASK. Naming a skill is a fallback for when the
 wrong one loaded.

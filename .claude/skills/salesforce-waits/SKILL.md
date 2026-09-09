@@ -154,6 +154,20 @@ await modal.save();
 await Promise.all([saved, relisted]);
 ```
 
+## The save response is not the end of the story
+
+`ui-api/records` (PATCH/POST) returns when the **synchronous** transaction commits. The async tail
+— after-save Flows, `@future`/Queueable/Batch Apex, Platform Events, roll-up recalculation — runs
+afterwards. So waiting on the save is correct for "did the save land", and **not** sufficient for
+"is the derived value on screen right".
+
+If a UI assertion depends on an async result (a rollup in the highlights panel, a related list a
+Flow populates), wait on the specific `ui-api` READ that reflects it, or re-open the record. Do not
+assert on the first render after save.
+
+That is a data-settling problem rather than a Lightning-waiting problem, so the detail lives in
+**`salesforce-async`** — including why a `201` is not final state and how to poll for it.
+
 ## The hydration trap
 
 Lightning renders the shell before components hydrate. A button can be visible and _attached_ while its

@@ -8,15 +8,17 @@ dedicated skills below carry the detail; this file is the summary and the routin
 
 ## Skills in this pack
 
-| Skill                          | Covers                                                          |
-| ------------------------------ | --------------------------------------------------------------- |
-| `salesforce`                   | Hub. What to test, what NOT to test, the SUT seam, dos & don'ts |
-| `salesforce-auth`              | JWT bearer, SFDX, session injection, MFA/SSO, per-persona state |
-| `salesforce-locators`          | Lightning base-component locator cookbook + strict-mode traps   |
-| `salesforce-waits`             | `/aura` vs `/ui-api`, toasts, spinners, inline edit, navigation |
-| `salesforce-personas`          | Profile/permset matrix, FLS, CRUD, sharing, absence testing     |
-| `salesforce-metadata-contract` | `describe` → Zod, drift detection, Apex REST, Platform Events   |
-| `salesforce-data`              | Composite/Bulk record setup, cleanup, governor & API limits     |
+| Skill                          | Covers                                                                       |
+| ------------------------------ | ---------------------------------------------------------------------------- |
+| `salesforce`                   | Hub. What to test, what NOT to test, the SUT seam, dos & don'ts              |
+| `salesforce-auth`              | JWT bearer, SFDX, session injection, MFA/SSO, per-persona state              |
+| `salesforce-locators`          | Lightning base-component locator cookbook + strict-mode traps                |
+| `salesforce-waits`             | `/aura` vs `/ui-api`, toasts, spinners, inline edit, navigation              |
+| `salesforce-personas`          | Profile/permset matrix, FLS, CRUD, sharing, absence testing                  |
+| `salesforce-metadata-contract` | `describe` → Zod, drift detection, Apex REST, Platform Events                |
+| `salesforce-data`              | Composite/Bulk record setup, cleanup, governor & API limits, Person Accounts |
+| `salesforce-async`             | Why a `201` is not final state — rollups, Flows, @future, Platform Events    |
+| `salesforce-fsc`               | FSC only (second-tier overlay): `FinServ__`, households, reciprocal roles    |
 
 ## Locator priority
 

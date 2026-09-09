@@ -94,6 +94,24 @@ generated contract or a role model can use them. See `salesforce-metadata-contra
 - Create your own data (factory/helper fixture); clean it up in teardown (runs on failure).
 - `@destructive` tests that touch shared state must restore it in `afterEach`/`afterAll`.
 
+### Annotations carry the ticket, not just a comment
+
+Constitution #13 requires a `// FIXME: <ticket>` on any skip. A comment is invisible in the HTML
+report, so pair it with an annotation and the ticket travels with the result:
+
+```ts
+test(
+  'checkout applies the loyalty discount',
+  { tag: '@regression', annotation: [{ type: 'issue', description: 'PROJ-1421' }] },
+  async ({ checkoutPage }) => {
+    // …
+  },
+);
+```
+
+Use `annotation` for the ticket, the tag for the lane. They are different axes — and note the tag
+must stay a single string (#14) while `annotation` is a list.
+
 ## Cleanup
 
 Prefer API/fixture teardown over UI cleanup (faster, runs on failure). Never leave data behind.

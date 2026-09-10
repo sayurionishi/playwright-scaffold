@@ -29,10 +29,22 @@ Schemathesis/Dredd) and stop. Don't scaffold browser projects for that. (CLAUDE.
 Map app type → profile (see `profiles/*.md`): `generic` | `controlled` | `salesforce` | `api-only`.
 Read the chosen profile file; it specifies locator priority, wait notes, and auth handling.
 
-### The Salesforce pack is an OPT-IN OVERLAY — do not prune it
+### The Salesforce pack is an OPT-IN OVERLAY — and removing it is the user's call
 
-**If the profile is NOT `salesforce`: delete nothing.** The pack is inert unless an org is
-configured, so there is nothing to remove:
+**If the profile is NOT `salesforce`, ASK whether to remove the pack. Do not decide either way.**
+
+> This target is not Salesforce. The pack is about half the repo and costs roughly 1,700
+> always-loaded tokens per session — 9 of the 24 skills describe a platform you are not testing,
+> which is a mis-trigger risk as well as wasted budget. Remove it? (recommended)
+>
+> `npm run prune:salesforce` — dry run first, then `-- --yes`. It lands as one revertable commit
+> and verifies itself; if any gate fails it says so instead of claiming success.
+
+Then **record the answer in `PROJECT.md`** (`Salesforce pack: removed` / `kept — <reason>`) so a
+later session does not re-offer it, and so a team that kept it knows the pack is present on purpose.
+
+**Either answer leaves a correct scaffold.** That is the point, and it is what makes the offer safe
+to make at all — the pack is inert unless an org is configured:
 
 - `playwright.config.ts` only declares the `org`, `setup:salesforce` and `salesforce` projects when
   `SF_LOGIN_URL` is set. Unset, they do not exist — `npm test` never reaches them.
@@ -41,15 +53,17 @@ configured, so there is nothing to remove:
   variable through a getter, so no `SF_*` var is ever required.
 - The `salesforce*` skills load only on demand, and their descriptions carry a profile guard.
 
-⚠️ **This instruction used to say the opposite, and following it broke the build.** The old prune
-list omitted `fixtures/test-options.ts` — the one file outside `*/salesforce/` that imports the
-Salesforce fixtures — so deleting `fixtures/salesforce/` produced an unresolved-module error in
-**every spec**. Worse, pruning is a fork: a pruned clone diverges from upstream on day one and can
-never merge an upstream fix. Leaving the pack in place keeps the project mergeable.
+⚠️ **Never prune by hand, and never from a checklist.** This skill used to carry a prose prune
+list, and following it BROKE THE BUILD: it omitted `fixtures/test-options.ts` — the one file
+outside `*/salesforce/` that imports the Salesforce fixtures — so deleting `fixtures/salesforce/`
+produced an unresolved-module error in **every spec**. A hand-maintained list of cross-cutting
+edits always drifts from the code.
 
-If a team genuinely wants the files gone (repo size, or to stop the directories showing in search),
-that is a deliberate one-way decision to make explicitly and separately — not a bootstrap step. Add
-`search.exclude` entries first; that solves the real complaint without forking.
+`scripts/prune-salesforce.ts` exists because of that failure. It validates every anchor before
+writing anything (so a stale anchor changes nothing rather than half-applying), and it ends by
+running typecheck, lint, format, the guard and rule-surface checks, and test discovery — so
+"pruned" means "provably still green". If you find yourself deleting Salesforce files by hand,
+stop: fix the script's anchors instead.
 
 ### Two tiers, so nobody pays for what they do not use
 

@@ -29,6 +29,7 @@
     "lint": "eslint . --max-warnings=0",
     "lint:fix": "eslint . --fix",
     "guard": "tsx scripts/constitution-guard.ts",
+    "prune:salesforce": "tsx scripts/prune-salesforce.ts",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "typecheck": "tsc --noEmit",

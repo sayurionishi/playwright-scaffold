@@ -7,6 +7,11 @@
 - **App / service name:** <name>
 - **What we test:** <UI | API | both>
 - **App type / profile:** <generic | controlled | salesforce | api-only>  → see `profiles/<profile>.md`
+- **Salesforce pack:** <kept — why | removed>
+  <!-- If the profile is not `salesforce`, bootstrap offers `npm run prune:salesforce` (about half
+       the repo, ~1,700 always-loaded tokens per session). Record the answer so a later session does
+       not re-offer it, and if you KEPT it say why — the pack is inert without SF_LOGIN_URL, so
+       keeping it is a valid choice rather than a loose end. -->
 - **Tech stack (under test):** <e.g. React SPA, Salesforce Lightning, FastAPI backend>
 
 ## Locator strategy (active)

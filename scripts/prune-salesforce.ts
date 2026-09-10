@@ -127,17 +127,6 @@ import { test as salesforcePersonaTest } from './salesforce/persona-fixture';
   },
   {
     file: 'playwright.config.ts',
-    what: 'drop globalSetup (it existed only for the org API-limit pre-flight)',
-    find: `  /**
-   * Org API-limit pre-flight. A silent no-op unless SF_LOGIN_URL is set, so a non-Salesforce
-   * clone is unaffected. See helpers/salesforce/global-setup.ts - \`assertApiLimitHeadroom\` was
-   * documented as a guarantee in three places but had no callers until this was wired.
-   */
-  globalSetup: './helpers/salesforce/global-setup.ts',\n`,
-    replace: '',
-  },
-  {
-    file: 'playwright.config.ts',
     what: 'drop the hasSalesforceOrg flag',
     find: `const hasSalesforceOrg = (process.env.SF_LOGIN_URL ?? '') !== '';\n`,
     replace: '',
@@ -201,6 +190,17 @@ interface RegexEdit {
 
 const REGEX_EDITS: readonly RegexEdit[] = [
   {
+    file: 'playwright.config.ts',
+    /* A regex, not a literal. The literal version of this anchor broke twice: once on an em-dash
+       and once on the backticks inside the docblock, which have to be escaped in a template
+       literal and so silently stopped matching. Anchoring on the two ends and skipping the middle
+       is robust to any rewording of the comment. */
+    what: 'drop globalSetup and its docblock (it existed only for the org API-limit pre-flight)',
+    pattern:
+      /\n {2}\/\*\*\n {3}\* Org API-limit pre-flight[\s\S]*?globalSetup: '\.\/helpers\/salesforce\/global-setup\.ts',/,
+    replace: '',
+  },
+  {
     file: 'rules/constitution.ts',
     what: "drop 'salesforce' from the Topic union",
     pattern: /export type Topic =[^;]+;/,
@@ -209,14 +209,14 @@ const REGEX_EDITS: readonly RegexEdit[] = [
   {
     file: 'rules/constitution.ts',
     what: 'drop the salesforce entry from TOPIC_SCOPES',
-    pattern: /\n  salesforce: '\*\*\/salesforce\/\*\*',/,
+    pattern: /\n {2}salesforce: '\*\*\/salesforce\/\*\*',/,
     replace: '',
   },
   {
     file: 'playwright.config.ts',
-    /* Anchored on the whole docblock, not its middle. Starting at the "THE OVERLAY IS
-       CONDITIONAL" line would delete the closing `*​/` and leave an unterminated comment - which
-       is the same class of silent breakage the prose checklist caused. */
+    /* Anchored on the whole docblock, not its middle: starting at the "THE OVERLAY IS
+       CONDITIONAL" line would delete the comment terminator too and leave the file with an
+       unterminated comment - the same class of silent breakage the prose checklist caused. */
     what: 'remove the overlay rationale docblock (it documents a decision no longer present)',
     pattern: /\/\*\*\n \* [=\u2550]+\n \* THE OVERLAY IS CONDITIONAL[\s\S]*?\n \*\/\n/,
     replace: '',
@@ -340,56 +340,83 @@ async function main(): Promise<void> {
     return;
   }
 
-  console.log('\n  Applying...');
+  /* ---------------------------------------------------------------------------------------------
+     TWO PHASES, AND THE ORDER IS THE WHOLE POINT.
 
-  // Anchored edits run FIRST: if an anchor is missing, nothing has been deleted yet.
-  for (const edit of EDITS) {
-    const file = path.resolve(ROOT, edit.file);
-    const source = await fs.readFile(file, 'utf8');
-    if (!source.includes(edit.find)) {
-      throw new PruneError(
-        `Anchor not found in ${edit.file} (${edit.what}).\n` +
-          '    The code has moved since this script was written. NOTHING has been changed.\n' +
-          '    Fix the anchor in scripts/prune-salesforce.ts rather than pruning by hand - a\n' +
-          '    partial prune that reports success is the exact failure this script exists to stop.',
-      );
-    }
-    await fs.writeFile(file, source.replace(edit.find, edit.replace), 'utf8');
+     The first version of this applied each edit as it went and, on the first missing anchor,
+     reported "NOTHING has been changed" - which was FALSE: two files had already been rewritten.
+     A tool that misreports what it did is worse than one that fails, because you cannot trust the
+     recovery advice either.
+
+     So: validate EVERY anchor against the current files first, collecting all failures. Only if
+     the whole plan is applicable does anything get written.
+     --------------------------------------------------------------------------------------------- */
+  console.log('\n  Validating every anchor before writing anything...');
+
+  const files = new Map<string, string>();
+  const involved = new Set<string>([
+    ...EDITS.map((e) => e.file),
+    ...BLOCK_EDITS.map((e) => e.file),
+    ...REGEX_EDITS.map((e) => e.file),
+  ]);
+  for (const rel of involved) {
+    files.set(rel, await fs.readFile(path.resolve(ROOT, rel), 'utf8'));
   }
 
+  const problems: string[] = [];
+  for (const edit of EDITS) {
+    if (!files.get(edit.file)!.includes(edit.find)) {
+      problems.push(`${edit.file}: literal anchor missing - ${edit.what}`);
+    }
+  }
   for (const edit of BLOCK_EDITS) {
-    const file = path.resolve(ROOT, edit.file);
-    const source = await fs.readFile(file, 'utf8');
+    const source = files.get(edit.file)!;
     const from = source.indexOf(edit.start);
     if (from === -1) {
-      throw new PruneError(
-        `Block start not found in ${edit.file} (${edit.what}). Stopping; the tree is partially\n` +
-          '    modified - discard with `git checkout . && git clean -fd`.',
-      );
+      problems.push(`${edit.file}: block START missing - ${edit.what}`);
+    } else if (
+      edit.end !== 'END_OF_FILE' &&
+      source.indexOf(edit.end, from + edit.start.length) === -1
+    ) {
+      problems.push(`${edit.file}: block END missing - ${edit.what}`);
     }
+  }
+  for (const edit of REGEX_EDITS) {
+    if (!edit.pattern.test(files.get(edit.file)!)) {
+      problems.push(`${edit.file}: pattern ${String(edit.pattern)} missing - ${edit.what}`);
+    }
+  }
+
+  if (problems.length > 0) {
+    throw new PruneError(
+      `${problems.length} anchor(s) no longer match the code:\n` +
+        problems.map((p) => `      - ${p}`).join('\n') +
+        '\n\n    NOTHING has been changed - this was checked before any write.\n' +
+        '    Fix the anchors in scripts/prune-salesforce.ts rather than pruning by hand: a\n' +
+        '    partial prune that reports success is the exact failure this script exists to stop.',
+    );
+  }
+  console.log(`    all ${EDITS.length + BLOCK_EDITS.length + REGEX_EDITS.length} anchors matched`);
+
+  // Phase 2: transform in memory, then write once per file.
+  console.log('\n  Applying...');
+  for (const edit of EDITS) {
+    files.set(edit.file, files.get(edit.file)!.replace(edit.find, edit.replace));
+  }
+  for (const edit of BLOCK_EDITS) {
+    const source = files.get(edit.file)!;
+    const from = source.indexOf(edit.start);
     const to =
       edit.end === 'END_OF_FILE'
         ? source.length
         : source.indexOf(edit.end, from + edit.start.length);
-    if (to === -1) {
-      throw new PruneError(
-        `Block end not found in ${edit.file} (${edit.what}). Stopping; discard with\n` +
-          '    `git checkout . && git clean -fd`.',
-      );
-    }
-    await fs.writeFile(file, `${source.slice(0, from)}${source.slice(to)}`, 'utf8');
+    files.set(edit.file, `${source.slice(0, from)}${source.slice(to)}`);
   }
-
   for (const edit of REGEX_EDITS) {
-    const file = path.resolve(ROOT, edit.file);
-    const source = await fs.readFile(file, 'utf8');
-    if (!edit.pattern.test(source)) {
-      throw new PruneError(
-        `Pattern ${String(edit.pattern)} not found in ${edit.file} (${edit.what}). Stopping;\n` +
-          '    discard with `git checkout . && git clean -fd`.',
-      );
-    }
-    await fs.writeFile(file, source.replace(edit.pattern, edit.replace), 'utf8');
+    files.set(edit.file, files.get(edit.file)!.replace(edit.pattern, edit.replace));
+  }
+  for (const [rel, content] of files) {
+    await fs.writeFile(path.resolve(ROOT, rel), content, 'utf8');
   }
 
   // package.json scripts
@@ -402,6 +429,11 @@ async function main(): Promise<void> {
   for (const rel of present) {
     await fs.rm(path.resolve(ROOT, rel), { recursive: true, force: true });
   }
+  /* And finally this script itself. After the prune there is nothing left to prune, and this file
+     is the last thing in the repo that mentions Salesforce — keeping it would leave dead code that
+     lint still has to check and that invites someone to run it against a repo it no longer
+     describes. It is recoverable from git history like anything else. */
+  await fs.rm(path.resolve(ROOT, 'scripts/prune-salesforce.ts'), { force: true });
   console.log(`    removed ${present.length} path(s), applied every edit`);
 
   // Regenerate, then format - the generator writes markdown that must satisfy prettier --check.

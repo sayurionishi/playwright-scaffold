@@ -43,8 +43,8 @@ Read the chosen profile file; it specifies locator priority, wait notes, and aut
 > always-loaded tokens per session — 9 of the 24 skills describe a platform you are not testing,
 > which is a mis-trigger risk as well as wasted budget. Remove it? (recommended)
 >
-> `npm run prune:salesforce` — dry run first, then `-- --yes`. It lands as one revertable commit
-> and verifies itself; if any gate fails it says so instead of claiming success.
+> `npm run prune -- --pack=salesforce` — dry run first, then add `--yes`. It lands as one
+> revertable commit and verifies itself; if any gate fails it says so instead of claiming success.
 
 Then **record the answer in `PROJECT.md`** (`Salesforce pack: removed` / `kept — <reason>`) so a
 later session does not re-offer it, and so a team that kept it knows the pack is present on purpose.
@@ -65,7 +65,7 @@ outside `*/salesforce/` that imports the Salesforce fixtures — so deleting `fi
 produced an unresolved-module error in **every spec**. A hand-maintained list of cross-cutting
 edits always drifts from the code.
 
-`scripts/prune-salesforce.ts` exists because of that failure. It validates every anchor before
+`scripts/prune.ts` exists because of that failure. It validates every anchor before
 writing anything (so a stale anchor changes nothing rather than half-applying), and it ends by
 running typecheck, lint, format, the guard and rule-surface checks, and test discovery — so
 "pruned" means "provably still green". If you find yourself deleting Salesforce files by hand,
@@ -162,6 +162,9 @@ Point the user at the first real task (usually a page object via `page-objects`,
 - Don't generate tests before `PROJECT.md` exists.
 - Don't silently delete OR silently keep the example files — **ask** (see Phase 4). If the user keeps them, move the example specs out of `tests/` so they don't run and fail against the real app.
 - Don't pick a profile for the user silently — confirm the app type first.
-- Don't prune the Salesforce pack. It is inert without `SF_LOGIN_URL`, and the old prune list broke
-  every spec by missing `fixtures/test-options.ts`.
+- Don't prune the Salesforce pack **by hand or from a checklist** — that is what broke every spec
+  by missing `fixtures/test-options.ts`. `npm run prune -- --pack=<id>` is the only supported way,
+  and offering it (Phase 3) is required; applying it without an answer is not.
+- Don't prune `salesforce` before `salesforce-fsc`. Tier 2 deletes the files tier 3 edits, so the
+  reverse order is refused.
 - Don't load `salesforce-fsc` unless the user confirmed Financial Services Cloud.

@@ -211,6 +211,53 @@ import { test as salesforcePersonaTest } from './salesforce/persona-fixture';
       replace: '',
     },
     {
+      file: 'fixtures/test-options.ts',
+      what: 'correct the docblock (it describes fixtures this prune removes)',
+      find: ` *
+ * The Salesforce fixtures (\`org\`, \`orgAs\`, \`orgSession\`, \`asPersona\`) are merged in here too and
+ * cost nothing when unused: Playwright fixtures are LAZY, so their setup only runs for a test that
+ * actually destructures them, and \`config/salesforce.config.ts\` reads env vars through getters. So
+ * a non-Salesforce project needs no SF_* variables set. \`bootstrap\` prunes them for other profiles.
+`,
+      replace: '',
+    },
+    {
+      file: 'config/app.config.ts',
+      what: 'drop the dangling salesforceConfig cross-reference',
+      find: 'Namespaced by environment (`.auth/<env>/user.json`), matching `salesforceConfig.storageStateFor`.',
+      replace: 'Namespaced by environment (`.auth/<env>/user.json`).',
+    },
+    {
+      file: '.claude/skills/bootstrap/SKILL.md',
+      what: 'drop salesforce from the profile list',
+      find: '`generic` | `controlled` | `salesforce` | `api-only`',
+      replace: '`generic` | `controlled` | `api-only`',
+    },
+    {
+      file: '.claude/skills/bootstrap/SKILL.md',
+      what: 'drop Salesforce from the app-type interview question',
+      find: '2. **App type?** generic web app / an app we control the source of / Salesforce (or other heavy SPA).',
+      replace: '2. **App type?** generic web app / an app we control the source of / a heavy SPA.',
+    },
+    {
+      file: '.claude/skills/bootstrap/SKILL.md',
+      what: 'drop the now-dangling "not Salesforce" bullet from Phase 4',
+      find: '  - **not Salesforce** → nothing to do (see Phase 3).\n',
+      replace: '',
+    },
+    {
+      file: '.claude/skills/bootstrap/SKILL.md',
+      what: 'drop Salesforce from the skill description frontmatter',
+      find: 'applies a profile (generic/controlled/salesforce/api-only)',
+      replace: 'applies a profile (generic/controlled/api-only)',
+    },
+    {
+      file: '.claude/skills/bootstrap/SKILL.md',
+      what: 'drop the Salesforce aside from the Phase 5 PROJECT.md guidance',
+      find: 'flaky areas, iframe/shadow-DOM notes for Salesforce). This file overrides',
+      replace: 'flaky areas). This file overrides',
+    },
+    {
       file: 'eslint.config.mjs',
       what: 'drop the Salesforce contract helpers from the expect-expect allowlist',
       find: `            'assertObjectShape',
@@ -246,6 +293,22 @@ import { test as salesforcePersonaTest } from './salesforce/persona-fixture';
       what: 'remove the salesforce-contract CI job',
       start: '  # ── Salesforce contract layer (no browser)',
       end: '  ui:\n',
+    },
+    {
+      /* bootstrap is the skill a fresh clone loads FIRST. Leaving it offering `npm run prune`
+         after this pack has deleted that script is exactly the stale-reference failure this
+         whole script exists to prevent — so the prune offer, the tier table and the entire
+         Salesforce sub-phase go with the pack. */
+      file: '.claude/skills/bootstrap/SKILL.md',
+      what: 'remove the prune offer, the tier table and Phase 3b (Salesforce bootstrap)',
+      start: "### The Salesforce pack is an OPT-IN OVERLAY — and removing it is the user's call",
+      end: '## Phase 4 — Apply the profile',
+    },
+    {
+      file: '.claude/skills/bootstrap/SKILL.md',
+      what: "remove the Salesforce lines from the Don't list",
+      start: "- Don't prune the Salesforce pack **by hand or from a checklist**",
+      end: 'END_OF_FILE',
     },
   ],
   regexEdits: [
@@ -313,10 +376,13 @@ import { test as salesforcePersonaTest } from './salesforce/persona-fixture';
     return null;
   },
   manualFollowUps:
-    'Salesforce mentions in README.md, AI-WORKFLOWS.md, docs/MAINTAINING-THE-AI-LAYER.md, and\n' +
-    '    the one-line "load salesforce-X instead" guards in six generic skill descriptions.\n' +
+    'Salesforce mentions in README.md, AI-WORKFLOWS.md and docs/MAINTAINING-THE-AI-LAYER.md;\n' +
+    '    the one-line "load salesforce-X instead" guards in six generic skill descriptions; and\n' +
+    '    a handful of docblocks that cite the profile as an EXAMPLE and stay true either way\n' +
+    '    (helpers/util/network.ts, pages/base.page.ts, fixtures/api/api-request.ts, rules/tasks.ts).\n' +
     '    Deliberately not scripted: markdown surgery on hand-written prose is fragile and the\n' +
-    '    remaining token win is small.',
+    '    remaining token win is small. The docblocks that would become FALSE — test-options.ts\n' +
+    '    and app.config.ts — are scripted above, because a wrong comment is worse than a stale one.',
 };
 
 // -- pack: salesforce-fsc (tier 3 only) -------------------------------------------------------
@@ -384,8 +450,11 @@ const SALESFORCE_FSC: Pack = {
     },
     {
       file: '.claude/skills/bootstrap/SKILL.md',
-      what: "drop the FSC line from the Don't list",
-      find: "- Don't load `salesforce-fsc` unless the user confirmed Financial Services Cloud.\n",
+      what: "drop the two FSC lines from the Don't list",
+      find: `- Don't prune \`salesforce\` before \`salesforce-fsc\`. Tier 2 deletes the files tier 3 edits, so the
+  reverse order is refused.
+- Don't load \`salesforce-fsc\` unless the user confirmed Financial Services Cloud.
+`,
       replace: '',
     },
   ],

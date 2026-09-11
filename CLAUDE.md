@@ -156,9 +156,11 @@ wrong one loaded.
 
 ## 5. When NOT to use this scaffold (be honest)
 
-- **Large, pure API suite where the API is the SUT and the backend is non-TypeScript** → recommend a
-  backend-native framework instead (pytest + Pydantic, RestAssured, or Schemathesis/Dredd for
-  contract testing from OpenAPI). Playwright's API mode is overkill there. See `api-testing` Phase 1.
+- **The API itself is the system under test** → use the companion scaffold
+  **`sayurionishi/api-testing-scaffold`**, which is built for exactly this and ships a Python track
+  (pytest + httpx + Pydantic v2) and a TypeScript track (Vitest + Zod). Same methodology, no browser
+  tooling. Other options: RestAssured (Java), or Schemathesis/Dredd for contract testing from
+  OpenAPI. See `profiles/api-only.md` and `api-testing` Phase 1.
 - **Load / performance testing** → k6 or Gatling, not this.
 - This scaffold's API project is for **API-as-setup** and **same-stack, modest API-as-SUT** suites
   that benefit from sharing types/fixtures with the UI tests.

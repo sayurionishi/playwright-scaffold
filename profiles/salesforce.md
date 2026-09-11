@@ -20,6 +20,24 @@ dedicated skills below carry the detail; this file is the summary and the routin
 | `salesforce-async`             | Why a `201` is not final state — rollups, Flows, @future, Platform Events    |
 | `salesforce-fsc`               | FSC only (second-tier overlay): `FinServ__`, households, reciprocal roles    |
 
+### You do not need FSC
+
+The first **eight** rows are the whole pack for an ordinary Salesforce org — Sales Cloud, Service
+Cloud, a custom-object app, a B2C org, anything. `salesforce-fsc` is **tier 3**: an overlay on top
+of this one, loaded only when `PROJECT.md` records `fsc: true`. It is not a prerequisite, it is not
+a dependency of any tier-2 skill, and it should not be loaded "just in case" — an org without the
+`FinServ__` managed package has nothing for it to describe.
+
+Two things people expect to find in the FSC tier and will not:
+
+- **Person Accounts** live in `salesforce-data`, not `salesforce-fsc`. Any B2C org can have them
+  enabled — retail, nonprofit, healthcare — and the record shape traps are the same everywhere.
+- **Managed-package namespace resolution** (`Namespace__Field__c`) lives in
+  `salesforce-metadata-contract`, because `FinServ__` is just one managed package among many.
+
+If you never run `npm run prune -- --pack=salesforce-fsc`, tier 3 costs you one skill description in
+the retrieval index and nothing at runtime. Pruning it is available, not required.
+
 ## Locator priority
 
 `getByRole` → `getByLabel` → `getByText` → `getByTestId`

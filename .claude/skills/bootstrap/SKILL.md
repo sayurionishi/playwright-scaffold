@@ -20,9 +20,15 @@ Ask the user (batch the questions):
 
 ## Phase 2 — The API-only gate (be honest)
 
-If the answer is "API only", AND the suite will be large, AND the API is the primary SUT, AND the
-backend is non-TypeScript → **recommend a backend-native tool instead** (pytest+Pydantic, RestAssured,
-Schemathesis/Dredd) and stop. Don't scaffold browser projects for that. (CLAUDE.md §5, `api-testing` P1.)
+If the answer is "API only" AND the API is the primary SUT (not setup for a UI suite) →
+**send the user to `sayurionishi/api-testing-scaffold` and stop.** That is the companion repo for
+exactly this case: same methodology, a Python track (pytest + httpx + Pydantic v2) and a TypeScript
+track (Vitest + Zod), no browser tooling. Other options if neither fits: RestAssured,
+Schemathesis/Dredd. Don't scaffold browser projects for a backend suite.
+(`profiles/api-only.md`, CLAUDE.md §5, `api-testing` P1.)
+
+If the API calls only exist to **seed/clean state for UI tests**, that is not api-only — stay here
+and use the `api` project. The two repos draw the line in exactly that place.
 
 ## Phase 3 — Select the profile
 
@@ -124,8 +130,11 @@ state you cannot read from a repo.
     the UI projects derive their `dependencies` and `storageState` from the same flag. Leave
     `helpers/auth/auth.setup.ts` in place; it is never collected without the variable.
   - **not Salesforce** → nothing to do (see Phase 3).
-  - **api-only** → the UI projects are the only ones worth removing by hand, and only if you want
-    them out of `--list` output. They collect zero tests once you delete the example specs.
+  - **api-only** → nothing to do, and **do not hand-delete the UI layer** — `fixtures/test-options.ts`
+    imports the POM fixture, so deleting `fixtures/pom/` breaks every spec. `functional`/`e2e`
+    collect zero tests once the example specs are gone, and `setup` only exists when
+    `TEST_USER_EMAIL` is set. If the API is the SUT, you should be in
+    `sayurionishi/api-testing-scaffold` (Phase 2), not pruning this one.
   - **UI-only** → keep `api`; it is how UI tests arrange state quickly.
 - **Env:** create `env/.env.<env>` from the example; fill `BASE_URL`/`API_URL`/creds. **`BASE_URL` is the app ROOT** (e.g. `https://demo.playwright.dev`) — do NOT bake a path segment into it (e.g. `.../todomvc`), or a `goto('/')` will drop the path. Put path segments in `enums/util/routes.ts` and navigate to them.
 - **Enums/config:** replace the example endpoints/routes/messages with the target's real ones (verify live / against OpenAPI — don't guess).

@@ -44,6 +44,70 @@ interface Surface {
 
 // ── renderers ─────────────────────────────────────────────────────────────────────────────────
 
+/**
+ * Rules with a MECHANICAL gate — lint, the guard script, or the type system. Everything else is
+ * review-only.
+ *
+ * This is the single definition of "blocking". Both `docs/PARITY-MATRIX.md` and the CLAUDE.md
+ * enforcement paragraph read it, because the previous arrangement — a generated matrix plus a
+ * HAND-WRITTEN sentence in CLAUDE.md — drifted exactly as you would expect: Phase 4 raised
+ * enforcement from 2 rules to 13, regenerated the matrix, and left CLAUDE.md claiming 2. A number
+ * that is asserted in prose is a number that will rot.
+ */
+function blockingRules(): typeof CONSTITUTION {
+  return CONSTITUTION.filter((r) => {
+    const e = r.enforcement;
+    return (
+      (e.kind === 'eslint' && e.blocking) || e.kind === 'guard-script' || e.kind === 'type-system'
+    );
+  }) as unknown as typeof CONSTITUTION;
+}
+
+/**
+ * Blocking rules whose LINT SCOPE does not cover everywhere the RULE claims to apply.
+ *
+ * Compared per top-level directory, so `tests/**` vs `tests/**' + '/*.spec.ts` counts as covered —
+ * that narrowing is real but inert, since `tests/` holds only specs. What this catches is a rule
+ * declared for several directories and enforced in one. Naming the uncovered directories is the
+ * whole job of this file: the previous hand-written version asserted "rule #1 … only inside the
+ * spec glob", which stopped being true when Phase 4 widened #1, and hid the rule that IS narrow.
+ */
+function narrowlyScoped(): { id: number; uncovered: string[] }[] {
+  const dir = (glob: string): string => glob.split('/')[0] ?? glob;
+  return blockingRules()
+    .map((r) => {
+      const e = r.enforcement;
+      if (e.kind !== 'eslint') return { id: r.id, uncovered: [] };
+      const covered = new Set(e.scope.split(',').map((g) => dir(g.trim())));
+      return {
+        id: r.id,
+        uncovered: [...new Set(r.appliesTo.map(dir))].filter((d) => !covered.has(d)),
+      };
+    })
+    .filter((r) => r.uncovered.length > 0);
+}
+
+/**
+ * The CLAUDE.md §1 enforcement paragraph. Generated for the reason above: this sentence used to be
+ * hand-written and went stale by 11 rules.
+ */
+function claudeEnforcement(): string {
+  const blocking = blockingRules();
+  const reviewOnly = CONSTITUTION.filter((r) => !blocking.some((b) => b.id === r.id));
+  const reviewList = reviewOnly.map((r) => `#${r.id}`).join(' and ');
+  return [
+    `Today **${blocking.length} of the ${CONSTITUTION.length} rules are mechanically blocking**: a violation`,
+    'fails `npm run lint` or `npm run guard`, and so fails the CI `quality` job. The remaining',
+    `${reviewOnly.length} (${reviewList}) ${reviewOnly.length === 1 ? 'is' : 'are'} review-only — the honest answer, not a gap. ${reviewOnly.length === 1 ? 'It asks' : 'They ask'} whether a value`,
+    'was invented or read from a real source, and no linter can see that.',
+    '',
+    'Per-rule detail — including the one rule enforced more narrowly than it is declared — is in',
+    '**`docs/PARITY-MATRIX.md`**. Both that file and this paragraph are generated from',
+    '`rules/constitution.ts`, so neither can overclaim: to make either say a rule is blocking, you',
+    'have to make the rule blocking.',
+  ].join('\n');
+}
+
 /** The CLAUDE.md §1 table: `| # | Forbidden | Instead |`. */
 function claudeTable(): string {
   const rows = CONSTITUTION.map((r) => `| ${r.id} | ${cell(r.forbidden)} | ${cell(r.instead)} |`);
@@ -115,12 +179,9 @@ function parityMatrix(): string {
     return `| #${r.id} | ${cell(stripMd(r.forbidden))} | ${cell(mechanism)} | ${blocking} | ${cell(note)} |`;
   });
 
-  const blockingCount = CONSTITUTION.filter((r) => {
-    const e = r.enforcement;
-    return (
-      (e.kind === 'eslint' && e.blocking) || e.kind === 'guard-script' || e.kind === 'type-system'
-    );
-  }).length;
+  const blocking = blockingRules();
+  const blockingCount = blocking.length;
+  const reviewOnly = CONSTITUTION.filter((r) => !blocking.some((b) => b.id === r.id));
 
   return [
     '<!-- This file is FULLY GENERATED from rules/constitution.ts. Do not edit it by hand. -->',
@@ -145,10 +206,24 @@ function parityMatrix(): string {
     '',
     '- **Blocks the build** means a violation fails `npm run lint` (or the guard script) and',
     '  therefore fails the CI `quality` job. Anything else is caught by a human, or not at all.',
-    '- A rule can be enforced *narrowly*: rule #1 is an ESLint error, but only inside the spec glob.',
-    '  The Notes column names the gap rather than rounding it up to "enforced".',
-    '- Review-only is a legitimate answer for rule #4 (never invent a value) — that is a question',
-    '  about process, not syntax, and no linter can see it.',
+    ...(narrowlyScoped().length > 0
+      ? [
+          '- **Enforced more narrowly than it is declared.** These rules are blocking, but the lint',
+          '  scope misses directories the rule itself claims to cover — a violation there ships:',
+          ...narrowlyScoped().map(
+            (r) =>
+              `  - rule #${r.id} — not checked in ${r.uncovered.map((d) => `\`${d}/\``).join(', ')}`,
+          ),
+        ]
+      : ['- Every blocking rule is enforced across every directory it declares. No scope gaps.']),
+    ...(reviewOnly.length > 0
+      ? [
+          `- Review-only is a legitimate answer for ${reviewOnly
+            .map((r) => `rule #${r.id} (${stripMd(r.forbidden)})`)
+            .join(' and ')} — that is a question about`,
+          '  process, not syntax, and no linter can see it.',
+        ]
+      : []),
   ].join('\n');
 }
 
@@ -210,6 +285,7 @@ const TOPICS: readonly Topic[] = [
 
 const SURFACES: readonly Surface[] = [
   { file: 'CLAUDE.md', block: 'constitution', render: claudeTable },
+  { file: 'CLAUDE.md', block: 'enforcement', render: claudeEnforcement },
   { file: '.github/copilot-instructions.md', block: 'hard-stops', render: copilotHardStops },
   { file: 'AGENTS.md', block: 'agents', render: agentsBody },
   { file: 'docs/PARITY-MATRIX.md', render: parityMatrix },

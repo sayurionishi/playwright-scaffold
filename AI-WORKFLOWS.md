@@ -41,7 +41,7 @@ If this map and a skill disagree, the **skill wins**.
 **Use when:** `PROJECT.md` does not exist. **Skill:** `bootstrap`.
 
 1. Interview: UI / API / both? App type (generic / controlled-source / Salesforce)? Auth model? Is there an OpenAPI/Swagger contract?
-2. **API-only check** — if it's a large pure-API suite on a non-TS backend, recommend a backend-native tool (`api-testing` P1 / CLAUDE.md §5) and stop.
+2. **API-only check** — if the API itself is the SUT, send the user to `sayurionishi/api-testing-scaffold` and stop (`api-testing` P1 / CLAUDE.md §5 / `profiles/api-only.md`). API-as-setup for UI tests stays here.
 3. Select the profile; apply it: set selector priority, wire or remove `auth.setup.ts`, prune unused projects in `playwright.config.ts`, fill `env/.env.<env>`.
 4. Write `PROJECT.md` (profile + decisions + target facts).
 5. Hand off to the first real task (usually a page object or an API suite).

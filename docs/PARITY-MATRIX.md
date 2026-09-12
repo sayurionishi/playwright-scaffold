@@ -34,7 +34,8 @@ was a non-blocking warning.
 
 - **Blocks the build** means a violation fails `npm run lint` (or the guard script) and
   therefore fails the CI `quality` job. Anything else is caught by a human, or not at all.
-- A rule can be enforced _narrowly_: rule #1 is an ESLint error, but only inside the spec glob.
-  The Notes column names the gap rather than rounding it up to "enforced".
-- Review-only is a legitimate answer for rule #4 (never invent a value) — that is a question
-  about process, not syntax, and no linter can see it.
+- **Enforced more narrowly than it is declared.** These rules are blocking, but the lint
+  scope misses directories the rule itself claims to cover — a violation there ships:
+  - rule #11 — not checked in `pages/`, `helpers/`, `test-data/`
+- Review-only is a legitimate answer for rule #4 (A guessed selector, URL, enum value, endpoint, or UI string) and rule #15 (A Salesforce object or field API name written from memory) — that is a question about
+  process, not syntax, and no linter can see it.

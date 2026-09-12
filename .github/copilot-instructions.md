@@ -21,11 +21,13 @@ If `PROJECT.md` does NOT exist, this is a fresh clone — **bootstrap it first**
 
 1. **Interview** the user (don't decide silently): UI / API / both? App type → profile (`generic` /
    `controlled` / `salesforce` / `api-only`)? Auth (none / password / SSO)? OpenAPI spec? Base URL?
-2. **API-only gate:** a large pure-API suite on a non-TS backend → recommend a backend-native tool
-   (pytest+Pydantic, RestAssured, Schemathesis) and stop.
-3. **Apply the profile:** set locator priority (per profile); in `playwright.config.ts` remove unused
-   projects (no auth → delete the `setup` project + its `dependencies` + `storageState` + `auth.setup.ts`;
-   no backend → remove `api`); fill `env/.env.<env>`.
+2. **API-only gate:** if the API itself is the system under test → send the user to
+   **`sayurionishi/api-testing-scaffold`** (the companion repo: Python track pytest+httpx+Pydantic v2,
+   TypeScript track Vitest+Zod) and stop. Other options: RestAssured, Schemathesis/Dredd. If the API
+   calls only seed/clean state for UI tests, that is NOT api-only — stay here and use the `api` project.
+3. **Apply the profile:** set locator priority (per profile). **Do not hand-delete projects** —
+   `setup` only exists when `TEST_USER_EMAIL` is set and the UI projects derive `dependencies`/
+   `storageState` from the same flag, so leave `auth.setup.ts` in place. Fill `env/.env.<env>`.
 4. **`BASE_URL` is the app ROOT only** — no path segment (not `.../todomvc`), else `goto('/')` drops it.
    Paths go in `enums/util/routes.ts`.
 5. **Example files — ASK, don't decide:** delete them, or keep as reference. If kept, MOVE the example
@@ -68,5 +70,8 @@ investigate the root cause.
 
 ## When NOT to use this for API testing
 
-A large, pure-API suite where the API is the SUT and the backend is non-TypeScript → recommend a
-backend-native tool (pytest+Pydantic, RestAssured, Schemathesis/Dredd), not Playwright.
+If the API itself is the system under test, use the companion scaffold
+**`sayurionishi/api-testing-scaffold`** — deliberately not Playwright, with a Python track
+(pytest + httpx + Pydantic v2) and a TypeScript track (Vitest + Zod). Other options: RestAssured,
+Schemathesis/Dredd. Playwright's API mode here is for **API-as-setup** and modest same-stack
+API-as-SUT suites that share types and fixtures with the UI tests.

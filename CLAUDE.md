@@ -51,11 +51,25 @@ Never ship, and refuse to generate, any of the following:
 
 <!-- END GENERATED: constitution -->
 
-**What is actually enforced** — see **`docs/PARITY-MATRIX.md`**, which is GENERATED from
-`rules/constitution.ts` and therefore cannot overclaim. Today **2 of the 15 rules are mechanically
-blocking** (#5 repo-wide, #1 in spec files only); everything else is review-only. That number is
-deliberately in one place: the previous hand-written claim here ("a hook (ESLint) enforces #1, #2,
-#5") was wrong about all three and nothing caught it.
+**What is actually enforced:**
+
+<!-- BEGIN GENERATED: enforcement — edit rules/constitution.ts, run npm run rules:generate -->
+
+Today **13 of the 15 rules are mechanically blocking**: a violation
+fails `npm run lint` or `npm run guard`, and so fails the CI `quality` job. The remaining
+2 (#4 and #15) are review-only — the honest answer, not a gap. They ask whether a value
+was invented or read from a real source, and no linter can see that.
+
+Per-rule detail — including the one rule enforced more narrowly than it is declared — is in
+**`docs/PARITY-MATRIX.md`**. Both that file and this paragraph are generated from
+`rules/constitution.ts`, so neither can overclaim: to make either say a rule is blocking, you
+have to make the rule blocking.
+
+<!-- END GENERATED: enforcement -->
+
+This paragraph is generated because the hand-written version of it rotted: it claimed "2 of the 15"
+long after enforcement had reached 13, and before that it claimed "a hook (ESLint) enforces #1, #2,
+#5" — wrong in all three ways. Nothing caught either, because prose has no test.
 
 There is no Claude Code hook in this repo. The blocking gate is the CI `quality` job
 (`typecheck` + `lint` + `rules:check`); `.husky/pre-commit` runs `lint-staged` over staged files.
@@ -185,7 +199,10 @@ The `selectors` and `wait-strategy` skills read the active profile from `PROJECT
 Set `SF_LOGIN_URL` and the pack activates: `playwright.config.ts` declares the `org`,
 `setup:salesforce` and `salesforce` projects, and the `salesforce*` skills apply. Leave it unset and
 none of that exists — the fixtures stay merged and cost nothing, because Playwright fixtures are
-lazy and `salesforceConfig` reads every variable through a getter. **There is nothing to prune.**
+lazy and `salesforceConfig` reads every variable through a getter. **Keeping the pack breaks
+nothing**, which is what makes removing it a choice rather than a chore: run
+`npm run prune -- --pack=salesforce` when you want the ~1,680 always-loaded tokens back. `bootstrap`
+Phase 3 is required to offer it and forbidden to decide for you.
 
 Code lives under `*/salesforce/` in each top-level directory (`config`, `enums`, `helpers`,
 `fixtures`, `pages`, `test-data`, `tests`), plus `scripts/generate-*.ts`. `ls` is more current than

@@ -255,18 +255,26 @@ tests/              api/   functional/   e2e/
 ## When _not_ to use this scaffold
 
 Playwright's API mode is the right fit for **API-as-setup** and **modest, same-stack API-as-SUT**
-suites that benefit from sharing types with the UI tests. It is **overkill** for a large, pure-API
-suite — especially when the API is the primary system under test and the backend is **not** TypeScript.
+suites that benefit from sharing types with the UI tests. It is the wrong tool when **the API itself
+is the system under test**.
 
-In that case prefer a backend-native tool:
+In that case use the companion scaffold
+**[`sayurionishi/api-testing-scaffold`](https://github.com/sayurionishi/api-testing-scaffold)** —
+same methodology as this repo (bootstrap skill, `PROJECT.md`, one rule source, Copilot
+instructions), deliberately **not** Playwright, with two tracks:
 
-- **pytest + httpx + Pydantic** (Python)
-- **RestAssured** (Java)
-- **Vitest + Zod** (Node, no browser)
-- **Schemathesis / Dredd** — contract testing straight from OpenAPI
+- **Python** — pytest + httpx + Pydantic v2
+- **TypeScript** — Vitest + native `fetch` + Zod
 
-The `bootstrap` skill's `api-only` path surfaces this guidance too. Load and performance testing
-belongs in **k6** or **Gatling**, not here.
+Other backend-native options if neither track fits: **RestAssured** (Java), or
+**Schemathesis / Dredd** for contract testing straight from OpenAPI.
+
+The line between the two repos is what the API calls are _for_: seeding and cleaning state for UI
+tests → stay here and use the `api` project; the API is the thing under test → go there. The
+`bootstrap` skill's Phase 2 gate and `profiles/api-only.md` enforce the same split.
+
+Load and performance testing belongs in **k6** or **Gatling**, not here. For the full list of what
+this scaffold does and does not fit, see **`docs/TARGET-FIT.md`**.
 
 ---
 

@@ -211,6 +211,192 @@ import { test as salesforcePersonaTest } from './salesforce/persona-fixture';
       replace: '',
     },
     {
+      file: 'rules/constitution.ts',
+      /* Editing the SOURCE, not the rendered output. Rule #2's text mentions the salesforce
+         profile, so it reaches CLAUDE.md §1, AGENTS.md, copilot-instructions.md and the topic
+         instruction files. Patching any of those would be undone by the next `rules:generate`. */
+      what: "drop the salesforce clause from rule #2's text (flows to 4 generated surfaces)",
+      find: '**On the `salesforce` profile this is a hard REFUSAL, not a discouragement** (Aura never goes quiet). ',
+      replace: '',
+    },
+    {
+      file: 'rules/constitution.ts',
+      what: "drop the Salesforce example from rule #6's parity-matrix note",
+      find: 'which a Salesforce describe payload legitimately needs.',
+      replace: 'which some third-party payloads legitimately need.',
+    },
+    {
+      file: 'PROJECT.md.template',
+      what: 'drop salesforce from the profile options',
+      find: '- **App type / profile:** <generic | controlled | salesforce | api-only>',
+      replace: '- **App type / profile:** <generic | controlled | api-only>',
+    },
+    {
+      file: 'PROJECT.md.template',
+      what: 'drop Salesforce from the tech-stack example',
+      find: '<e.g. React SPA, Salesforce Lightning, FastAPI backend>',
+      replace: '<e.g. React SPA, FastAPI backend>',
+    },
+    {
+      file: 'rules/tasks.ts',
+      /* Source again, not output: these two lines render into `.claude/commands/*.md` AND
+         `.github/prompts/*.prompt.md`, so patching the four generated files would be undone by
+         the `rules:generate` this script runs moments later. */
+      what: 'drop the salesforce-locators deferral from the add-page-object prompt',
+      find: `from \\\`PROJECT.md\\\`; on a Salesforce org it defers to \\\`salesforce-locators\\\`).`,
+      replace: `from \\\`PROJECT.md\\\`).`,
+    },
+    {
+      file: 'rules/tasks.ts',
+      what: 'drop the salesforce-data alternative from the add-factory prompt',
+      find: `Load the \\\`data-strategy\\\` skill (or \\\`salesforce-data\\\` for org records).`,
+      replace: `Load the \\\`data-strategy\\\` skill.`,
+    },
+    {
+      file: '.github/workflows/playwright.yml',
+      /* THE BUG THIS FIXES: the pack removes the `salesforce-contract` JOB, but the `required`
+         gate still listed it under `needs:`. GitHub Actions REFUSES to load a workflow whose
+         `needs` names a job that does not exist — so the prune was silently producing a repo with
+         no CI at all. None of the six gates could see it; only grepping the pruned tree for
+         leftover references did. Hence the seventh gate below. */
+      what: 'drop salesforce-contract from the required-checks needs list',
+      find: '    needs: [quality, api, salesforce-contract, ui]',
+      replace: '    needs: [quality, api, ui]',
+    },
+    {
+      file: '.github/workflows/playwright.yml',
+      what: 'drop the salesforce-contract result echo',
+      find: '          echo "salesforce-contract=${{ needs.salesforce-contract.result }}"\n',
+      replace: '',
+    },
+    {
+      file: '.github/workflows/playwright.yml',
+      what: 'drop salesforce-contract from the lane-failure loop',
+      find: '          for result in "${{ needs.api.result }}" "${{ needs.ui.result }}" "${{ needs.salesforce-contract.result }}"; do',
+      replace: '          for result in "${{ needs.api.result }}" "${{ needs.ui.result }}"; do',
+    },
+    {
+      file: '.github/workflows/playwright.yml',
+      what: 'drop the salesforce lanes from the header comment',
+      find: `#   - salesforce-contract  : org metadata + permission model. No browser. Auto-skips unless
+#                            SF_LOGIN_URL is set. Cheap enough to gate every push.
+#   - ui                   : functional + e2e, sharded across runners, reports merged into one.
+#
+# The Salesforce UI lane is deliberately NOT here: it needs one org user per persona and a browser,
+# so it belongs on a nightly/pre-release schedule rather than every push. Add it with
+# \`--project=salesforce\` once the persona users exist. See docs/salesforce/TEST-ARCHITECTURE.md §6.`,
+      replace:
+        '#   - ui                   : functional + e2e, sharded across runners, reports merged into one.',
+    },
+    {
+      file: 'CLAUDE.md',
+      /* This paragraph explains rule #15 — which this pack DELETES from rules/constitution.ts.
+         Leaving it would have CLAUDE.md justify a rule the generated table no longer lists. */
+      what: 'remove the rule #15 rationale paragraph (the rule itself is being removed)',
+      find: `Rule #15 is the Salesforce-specific sharpening of #4, and it earns its own row because Salesforce field
+API names are **org state, not application source**. An admin can add, rename, or delete a field with no
+deploy and no commit, so there is no repository to read them from — \`describe\` is the only source of
+truth. \`Margin__c\` existing in someone else's org proves nothing about yours.
+
+`,
+      replace: '',
+    },
+    {
+      file: '.github/instructions/waits.instructions.md',
+      what: 'drop the Salesforce example from the networkidle note',
+      find: 'Harmful on chatty SPAs (Salesforce especially) where the network',
+      replace: 'Harmful on chatty SPAs where the network',
+    },
+    {
+      file: '.github/instructions/pages-and-selectors.instructions.md',
+      what: 'drop the salesforce row from the locator-priority list',
+      find: '  - salesforce: `getByRole` → `getByLabel` → `getByText` → `getByTestId` (never Lightning hashed ids/classes)\n',
+      replace: '',
+    },
+    {
+      file: 'CLAUDE.md',
+      what: 'drop salesforce from the §0 profile list',
+      find: 'applies a profile (generic / controlled /\nsalesforce / api-only)',
+      replace: 'applies a profile (generic / controlled /\napi-only)',
+    },
+    {
+      file: 'CLAUDE.md',
+      what: 'remove the §0 "load the salesforce skill" instruction (the skill is gone)',
+      find: `
+If the recorded profile is **\`salesforce\`**, also load the \`salesforce\` skill before doing anything
+else Salesforce-specific — the pack (§7) replaces several generic defaults outright.
+`,
+      replace: '',
+    },
+    {
+      file: 'CLAUDE.md',
+      what: 'drop the salesforce row from the §6 profile table',
+      find: '| `salesforce` | role → label → text → testId               | Full pack: extra skills + code. See §7. |\n',
+      replace: '',
+    },
+    {
+      file: 'CLAUDE.md',
+      what: 'reword the TARGET-FIT pointer, which named a Salesforce org as a supported target',
+      find: '`bootstrap` when the target is anything other than a web app or a Salesforce org.',
+      replace: '`bootstrap` when the target is anything other than a web app.',
+    },
+    {
+      file: '.github/copilot-instructions.md',
+      what: 'drop salesforce from the Copilot profile list',
+      find: '`controlled` / `salesforce` / `api-only`)',
+      replace: '`controlled` / `api-only`)',
+    },
+    {
+      file: 'docs/TARGET-FIT.md',
+      what: 'drop the Salesforce-plus-web-app note',
+      find: `
+A Salesforce org **and** a custom web app in one suite is supported and not obvious: the two
+project sets are gated by different env vars (\`SF_LOGIN_URL\` and \`TEST_USER_EMAIL\`), so they
+coexist without interfering.
+`,
+      replace: '',
+    },
+    {
+      file: 'docs/TARGET-FIT.md',
+      /* Reworded, not deleted. The reasoning is sound without the pack; only the cross-reference
+         dies with it. Deleting the bullet would lose a real decision. */
+      what: 'reword the visual-regression rationale without the pack cross-reference',
+      find: `- **No visual regression.** Deliberate — see the \`salesforce\` pack's reasoning: styling churns,
+  and the scaffold already bans styling-based selectors for the same reason.
+- **No \`@axe-core\` by default.** On a platform org you would mostly be auditing the vendor's
+  components, not your own.`,
+      replace: `- **No visual regression.** Deliberate: styling churns far faster than behaviour, and the
+  scaffold already bans styling-based selectors for the same reason. A snapshot suite would be a
+  treadmill.`,
+    },
+    {
+      file: 'docs/TARGET-FIT.md',
+      what: 'reword the chatty-SPA section, which cited Salesforce as the source of the lesson',
+      find: `## 5. Heavy enterprise SPAs that are not Salesforce
+
+Workday, SAP Fiori, ServiceNow, Dynamics and similar have no dedicated profile. Use \`generic\`, and
+apply one Salesforce lesson to them: **treat Constitution #2 (\`networkidle\`) as a refusal, not a
+warning.**`,
+      replace: `## 5. Heavy enterprise SPAs
+
+Workday, SAP Fiori, ServiceNow, Dynamics and similar have no dedicated profile. Use \`generic\`, and
+**treat Constitution #2 (\`networkidle\`) as a refusal, not a warning.**`,
+    },
+    {
+      file: 'profiles/generic.md',
+      what: 'reword the chatty-SPA note, which cited Salesforce as the source of the lesson',
+      find: `dedicated one. Apply one Salesforce lesson to them: **treat Constitution #2 as a refusal, not a
+warning.**`,
+      replace: `dedicated one. **Treat Constitution #2 as a refusal, not a warning.**`,
+    },
+    {
+      file: 'profiles/generic.md',
+      what: 'drop the Lightning comparison from the markup-churn note',
+      find: "`helpers/util/network.ts` and pre-register the specific gating response. Their generated markup\nchurns like Lightning's too, so prefer role and label engines over anything structural.",
+      replace:
+        '`helpers/util/network.ts` and pre-register the specific gating response. Their generated markup\nchurns just as fast, so prefer role and label engines over anything structural.',
+    },
+    {
       file: 'fixtures/test-options.ts',
       what: 'correct the docblock (it describes fixtures this prune removes)',
       find: ` *
@@ -271,6 +457,18 @@ import { test as salesforcePersonaTest } from './salesforce/persona-fixture';
   ],
   blockEdits: [
     {
+      file: 'PROJECT.md.template',
+      what: 'remove the Salesforce-pack and FSC decision fields',
+      start: '- **Salesforce pack:**',
+      end: '- **Tech stack (under test):**',
+    },
+    {
+      file: 'PROJECT.md.template',
+      what: 'remove the whole Salesforce section of the template',
+      start: '## Salesforce (delete this whole section if the profile is not `salesforce`)',
+      end: 'END_OF_FILE',
+    },
+    {
       file: 'playwright.config.ts',
       what: 'remove the conditional Salesforce project overlay',
       start: '    /* ═══ THE SALESFORCE OVERLAY — pres',
@@ -312,6 +510,17 @@ import { test as salesforcePersonaTest } from './salesforce/persona-fixture';
     },
   ],
   regexEdits: [
+    {
+      file: 'docs/TARGET-FIT.md',
+      /* A regex because the `salesforce-fsc` pack may already have removed ONE of these rows, and
+         a literal listing all three would then miss — turning a legal compose order into a fatal
+         anchor failure. Matching the contiguous run of `| Salesforce…` rows works for three rows
+         or two. Non-global on purpose: one match covers the whole run, and a /g regex would carry
+         `lastIndex` state between the validation pass and the apply pass. */
+      what: 'drop the Salesforce rows from the good-fit table',
+      pattern: /(?:^\| Salesforce.*\n)+/m,
+      replace: '',
+    },
     {
       file: 'playwright.config.ts',
       /* A regex, not a literal. The literal version of this anchor broke twice: once on an em-dash
@@ -424,11 +633,31 @@ const SALESFORCE_FSC: Pack = {
       replace: '`salesforce-personas`, `salesforce-metadata-contract`, `salesforce-data`.',
     },
     {
+      file: 'docs/TARGET-FIT.md',
+      what: 'drop the FSC row from the good-fit table',
+      find: `| Salesforce Financial Services Cloud     | \`salesforce\` | Tier 2 **plus** \`salesforce-fsc\`. Record \`fsc: true\` in \`PROJECT.md\`.                       |
+`,
+      replace: '',
+    },
+    {
       file: 'profiles/salesforce.md',
       what: 'drop the FSC row from the skills table',
       find:
         '| `salesforce-fsc`               | FSC only (second-tier overlay): `FinServ__`, households,' +
         ' reciprocal roles    |\n',
+      replace: '',
+    },
+    {
+      file: '.claude/skills/salesforce-metadata-contract/SKILL.md',
+      /* The managed-package section stays — it serves nCino, Vlocity, Veeva and Conga, none of
+         which care about FSC. Only the "why FSC has its own skill" aside dies with tier 3. */
+      what: 'drop the FSC aside from the managed-package section',
+      find: `
+> FSC has its own skill (\`salesforce-fsc\`) only because its _data model_ — households, reciprocal
+> roles, \`FinServ__\` objects — needs naming. Everything in THIS section applies to every package,
+> FSC included. If you are on nCino or Vlocity, this section is your equivalent, and there is no
+> tier-3 skill to go looking for.
+`,
       replace: '',
     },
     {
@@ -521,6 +750,35 @@ async function exists(rel: string): Promise<boolean> {
     .stat(path.resolve(ROOT, rel))
     .then(() => true)
     .catch(() => false);
+}
+
+/**
+ * Seventh gate: every `needs:` entry in the CI workflow names a job that exists.
+ *
+ * The other six gates run Node tooling and are blind to YAML. That blindness shipped a real bug —
+ * the salesforce pack removed the `salesforce-contract` JOB while the `required` gate still listed
+ * it under `needs:`, and GitHub Actions refuses to load such a workflow. The prune therefore left
+ * a repo with NO CI while reporting six green gates. Cheap structural check, no yaml dependency.
+ */
+async function workflowJobsResolve(): Promise<string | null> {
+  const rel = '.github/workflows/playwright.yml';
+  if (!(await exists(rel))) return null;
+  const source = await fs.readFile(path.resolve(ROOT, rel), 'utf8');
+  const jobsAt = source.indexOf('\njobs:');
+  if (jobsAt === -1) return null;
+  const body = source.slice(jobsAt);
+  const defined = new Set([...body.matchAll(/^ {2}([A-Za-z0-9_-]+):$/gm)].map((m) => m[1]!));
+  const missing: string[] = [];
+  for (const m of body.matchAll(/^\s*needs:\s*(.+)$/gm)) {
+    const raw = m[1]!.trim();
+    const names = raw.startsWith('[') ? raw.replace(/[[\]]/g, '').split(',') : [raw];
+    for (const n of names.map((x) => x.trim()).filter(Boolean)) {
+      if (!defined.has(n) && !missing.includes(n)) missing.push(n);
+    }
+  }
+  return missing.length > 0
+    ? `${rel}: needs → ${missing.join(', ')} — no such job. GitHub Actions will refuse to load this workflow.`
+    : null;
 }
 
 async function readProjectMd(): Promise<string | null> {
@@ -750,7 +1008,17 @@ async function prune(pack: Pack, projectMd: string | null): Promise<void> {
     ['test discovery', 'npx', ['playwright', 'test', '--list']],
   ];
 
-  const failed = gates.filter(([label, cmd, args]) => !run(label, cmd, [...args]));
+  const failed: (readonly [string, string, readonly string[]])[] = gates.filter(
+    ([label, cmd, args]) => !run(label, cmd, [...args]),
+  );
+
+  const workflowProblem = await workflowJobsResolve();
+  if (workflowProblem === null) {
+    console.log('    PASS  workflow job graph');
+  } else {
+    console.log(`    FAIL  workflow job graph — ${workflowProblem}`);
+    failed.push(['workflow job graph', '', []]);
+  }
 
   if (failed.length > 0) {
     throw new PruneError(

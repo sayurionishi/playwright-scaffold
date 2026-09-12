@@ -20,10 +20,15 @@ Financial Services Cloud?", so a Salesforce project that is not FSC pays nothing
 
 ## The `FinServ__` managed package
 
-FSC objects and many of its fields carry the `FinServ__` namespace. A managed package's API names
-can differ between orgs, so **resolve them from `describe`/metadata — never hardcode the prefix
-from memory** (rule #15). This is the same rule as everywhere else in the pack; it just bites more
-often here, because almost every field you want is namespaced.
+> **FSC is a managed package, and the package-shaped rules are not FSC-specific.** Namespace
+> resolution, package automation firing during arrange, admin-only teardown, "a missing derived
+> value may be missing config rather than bad timing", and "don't test that the package works —
+> test your configuration of it" all live in **`salesforce-metadata-contract`** §"Testing a managed
+> package", because they apply equally to nCino, Vlocity, Veeva and Conga. Read that first; this
+> skill only adds what is specific to the FSC **data model**.
+
+The one thing worth repeating here: almost every field you want is namespaced, so the
+never-hardcode-the-prefix rule (#15) bites far more often on FSC than on a stock org.
 
 | Concept                                         | Object (typical)                                                  |
 | ----------------------------------------------- | ----------------------------------------------------------------- |
@@ -61,11 +66,9 @@ layouts, picklist values and required fields, on the same object**. That means:
 ## Arrange and teardown
 
 - Households and relationships create **graphs** of records. Prefer `composite/tree` to build a
-  parent plus its children in one call, and batch-delete on teardown.
-- **Tear down as admin.** A restricted FSC persona typically cannot delete, and
-  `deleteRecordQuietly` swallows the error — so cleanup as the subject fails silently and leaks.
-- FSC ships Flows, so automation fires during arrange even as admin. Expect side-effect records and
-  register them for teardown (`salesforce-data`, `salesforce-async`).
+  parent plus its children in one call, and batch-delete on teardown. This is the FSC-specific part.
+- Admin-only teardown and package automation firing during arrange apply to every managed package —
+  see `salesforce-metadata-contract` §"Testing a managed package".
 
 ## Don't
 

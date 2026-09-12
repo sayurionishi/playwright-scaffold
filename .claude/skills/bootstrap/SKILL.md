@@ -14,6 +14,10 @@ Ask the user (batch the questions):
 
 1. **What are we testing?** UI, API, or both?
 2. **App type?** generic web app / an app we control the source of / Salesforce (or other heavy SPA).
+   If the answer is **none of those** — Electron or another desktop app, a native mobile app, or
+   component testing — stop and read `docs/TARGET-FIT.md` WITH the user. There is no profile for
+   those, and steering them into `controlled` produces a config that cannot run. Say what it would
+   take instead of guessing.
 3. **Auth?** Is there a login? Credentials/SSO? Or no auth (e.g. a local app)?
 4. **API contract?** Is there an OpenAPI/Swagger spec? Where?
 5. **Base URL(s)** for the first environment.

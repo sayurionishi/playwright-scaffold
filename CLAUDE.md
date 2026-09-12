@@ -176,8 +176,13 @@ wrong one loaded.
   tooling. Other options: RestAssured (Java), or Schemathesis/Dredd for contract testing from
   OpenAPI. See `profiles/api-only.md` and `api-testing` Phase 1.
 - **Load / performance testing** → k6 or Gatling, not this.
+- **Electron / desktop, native mobile, component testing** → no path here today.
+  `docs/TARGET-FIT.md` says what each would take rather than pretending a profile fits.
 - This scaffold's API project is for **API-as-setup** and **same-stack, modest API-as-SUT** suites
   that benefit from sharing types/fixtures with the UI tests.
+
+**Full fit table — what this repo does and does not test: `docs/TARGET-FIT.md`.** Read it before
+`bootstrap` when the target is anything other than a web app or a Salesforce org.
 
 ---
 

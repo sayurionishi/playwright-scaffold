@@ -1,5 +1,5 @@
-import { test, expect } from '../../fixtures/test-options';
-import { UiMessages } from '../../enums/util/ui-messages';
+import { test, expect } from '@fixtures/test-options';
+import { UiMessages } from '@enums/util/ui-messages';
 
 /**
  * ⭐ REFERENCE IMPLEMENTATION — keep this green.

@@ -6,10 +6,10 @@
  * about that screen. One composite/tree call does it in ~200 ms, deterministically.
  */
 
-import type { ApiRequest } from '../../fixtures/api/api-request';
-import { salesforceConfig } from '../../config/salesforce.config';
-import { SalesforceApi, soqlUrl } from '../../enums/salesforce/salesforce-api';
-import { SObjects } from '../../enums/salesforce/sobjects';
+import type { ApiRequest } from '@fixtures/api/api-request';
+import { salesforceConfig } from '@config/salesforce.config';
+import { SalesforceApi, soqlUrl } from '@enums/salesforce/salesforce-api';
+import { SObjects } from '@enums/salesforce/sobjects';
 import {
   CompositeTreeResponseSchema,
   CreateResponseSchema,
@@ -19,7 +19,7 @@ import {
   type CompositeTreeResponse,
   type CreateResponse,
   type UserRecordAccess,
-} from '../../fixtures/salesforce/schemas/salesforce-common.schema';
+} from '@fixtures/salesforce/schemas/salesforce-common.schema';
 import { z } from 'zod';
 
 /**

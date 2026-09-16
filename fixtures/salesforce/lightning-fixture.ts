@@ -1,6 +1,6 @@
 import { test as cleanupTest } from './cleanup-fixture';
-import { LightningRecordPage } from '../../pages/salesforce/lightning-record.page';
-import { ListViewPage } from '../../pages/salesforce/list-view.page';
+import { LightningRecordPage } from '@pages/salesforce/lightning-record.page';
+import { ListViewPage } from '@pages/salesforce/list-view.page';
 
 /**
  * Lightning page objects for the project-default `page`.

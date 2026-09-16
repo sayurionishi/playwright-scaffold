@@ -1,7 +1,7 @@
 import { test as base } from '@playwright/test';
-import { LoginPage } from '../../pages/login.page';
-import { DashboardPage } from '../../pages/dashboard.page';
-import { ProductsPage } from '../../pages/products.page';
+import { LoginPage } from '@pages/login.page';
+import { DashboardPage } from '@pages/dashboard.page';
+import { ProductsPage } from '@pages/products.page';
 
 /**
  * Page-object dependency injection. Register every page object here once; tests then

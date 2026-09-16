@@ -1,5 +1,5 @@
-import { fakerFor } from '../../faker';
-import { uniqueName } from '../../../helpers/salesforce/soql';
+import { fakerFor } from '@test-data/faker';
+import { uniqueName } from '@helpers/salesforce/soql';
 
 /**
  * Salesforce record factories — dynamic happy-path drafts (`data-strategy`, `salesforce-data`).

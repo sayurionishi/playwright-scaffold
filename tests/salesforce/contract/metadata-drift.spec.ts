@@ -1,14 +1,10 @@
-import { test, expect } from '../../../fixtures/test-options';
-import { SalesforceApi } from '../../../enums/salesforce/salesforce-api';
-import { SObjects } from '../../../enums/salesforce/sobjects';
-import { salesforceConfig } from '../../../config/salesforce.config';
-import { VersionListSchema } from '../../../fixtures/salesforce/schemas/salesforce-common.schema';
-import type { ObjectSnapshot } from '../../../fixtures/salesforce/schemas/describe.schema';
-import {
-  fetchDescribe,
-  normalizeDescribe,
-  diffSnapshots,
-} from '../../../helpers/salesforce/describe';
+import { test, expect } from '@fixtures/test-options';
+import { SalesforceApi } from '@enums/salesforce/salesforce-api';
+import { SObjects } from '@enums/salesforce/sobjects';
+import { salesforceConfig } from '@config/salesforce.config';
+import { VersionListSchema } from '@fixtures/salesforce/schemas/salesforce-common.schema';
+import type { ObjectSnapshot } from '@fixtures/salesforce/schemas/describe.schema';
+import { fetchDescribe, normalizeDescribe, diffSnapshots } from '@helpers/salesforce/describe';
 
 /**
  * EXAMPLE metadata-contract tests. Runs in the `org` project (no browser).

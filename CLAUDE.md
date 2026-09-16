@@ -121,7 +121,12 @@ tests/         api/ (backend = SUT)  functional/ (one screen)  e2e/ (full journe
 `functional`, `e2e`. The SEAM is _what is the system under test_ — not which tool makes the call.
 API-as-setup is a fixture inside UI tests; API-as-SUT is the `api` project.
 
-**Every spec imports from one place:** `import { test, expect } from '<...>/fixtures/test-options';`
+**Every spec imports from one place:** `import { test, expect } from '@fixtures/test-options';`
+
+**Imports use path aliases, never `../`.** `@pages` `@fixtures` `@helpers` `@enums` `@config`
+`@test-data` `@rules` map to the directories above (`tsconfig.json`), and `no-restricted-imports`
+fails the build on anything that climbs. Sibling `./` imports stay relative — they are already
+short and carry no depth to go stale.
 
 ---
 

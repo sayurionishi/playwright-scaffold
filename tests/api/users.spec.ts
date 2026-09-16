@@ -1,8 +1,8 @@
-import { test, expect } from '../../fixtures/test-options';
-import { ApiEndpoints, buildPath } from '../../enums/util/api-endpoints';
-import { UserSchema, UserListSchema } from '../../fixtures/api/schemas/user.schema';
-import { ErrorResponseSchema } from '../../fixtures/api/schemas/_error.schema';
-import { makeUser } from '../../test-data/factories/user.factory';
+import { test, expect } from '@fixtures/test-options';
+import { ApiEndpoints, buildPath } from '@enums/util/api-endpoints';
+import { UserSchema, UserListSchema } from '@fixtures/api/schemas/user.schema';
+import { ErrorResponseSchema } from '@fixtures/api/schemas/_error.schema';
+import { makeUser } from '@test-data/factories/user.factory';
 
 /**
  * ⭐ REFERENCE IMPLEMENTATION — keep this green.

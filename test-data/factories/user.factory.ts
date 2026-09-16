@@ -1,4 +1,4 @@
-import { fakerFor } from '../faker';
+import { fakerFor } from '@test-data/faker';
 
 export interface NewUser {
   email: string;

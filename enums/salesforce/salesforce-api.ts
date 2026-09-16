@@ -9,7 +9,7 @@
  * API names* that go into them (Constitution #15) — those come from `describe`.
  */
 
-import { dataPath, salesforceConfig } from '../../config/salesforce.config';
+import { dataPath, salesforceConfig } from '@config/salesforce.config';
 
 export const SalesforceApi = {
   /** All API versions the org supports. Unversioned by design — used to assert the pin. */

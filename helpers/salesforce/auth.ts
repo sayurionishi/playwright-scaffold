@@ -18,8 +18,8 @@ import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import type { APIRequestContext, BrowserContext } from '@playwright/test';
 import { request as playwrightRequest } from '@playwright/test';
-import { salesforceConfig } from '../../config/salesforce.config';
-import { instanceHost } from '../../enums/salesforce/salesforce-api';
+import { salesforceConfig } from '@config/salesforce.config';
+import { instanceHost } from '@enums/salesforce/salesforce-api';
 
 const execFileAsync = promisify(execFile);
 

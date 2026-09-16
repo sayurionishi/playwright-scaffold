@@ -1,6 +1,6 @@
 import type { Locator, Page } from '@playwright/test';
-import { BasePage } from '../base.page';
-import { objectList } from '../../enums/salesforce/lightning-routes';
+import { BasePage } from '@pages/base.page';
+import { objectList } from '@enums/salesforce/lightning-routes';
 import { DataTableComponent } from './components/datatable.component';
 import { ModalComponent } from './components/modal.component';
 import { ToastComponent } from './components/toast.component';

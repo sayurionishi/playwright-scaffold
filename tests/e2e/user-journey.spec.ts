@@ -1,4 +1,4 @@
-import { test, expect } from '../../fixtures/test-options';
+import { test, expect } from '@fixtures/test-options';
 
 /**
  * ⭐ REFERENCE IMPLEMENTATION — keep this green.

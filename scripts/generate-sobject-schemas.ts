@@ -25,11 +25,11 @@ import { pathToFileURL } from 'node:url';
 import dotenv from 'dotenv';
 import { format as prettierFormat, resolveConfig as resolvePrettierConfig } from 'prettier';
 import { request as playwrightRequest } from '@playwright/test';
-import { ApiRequest } from '../fixtures/api/api-request';
-import { getOrgSession, authHeaders } from '../helpers/salesforce/auth';
-import { fetchDescribe, normalizeDescribe } from '../helpers/salesforce/describe';
-import type { DescribeField, ObjectSnapshot } from '../fixtures/salesforce/schemas/describe.schema';
-import { salesforceConfig } from '../config/salesforce.config';
+import { ApiRequest } from '@fixtures/api/api-request';
+import { getOrgSession, authHeaders } from '@helpers/salesforce/auth';
+import { fetchDescribe, normalizeDescribe } from '@helpers/salesforce/describe';
+import type { DescribeField, ObjectSnapshot } from '@fixtures/salesforce/schemas/describe.schema';
+import { salesforceConfig } from '@config/salesforce.config';
 
 // This must stay a raw inline read, matching playwright.config.ts: it decides which env/.env.<name>
 // file to load, so it can't itself depend on salesforceConfig (which needs that file loaded first).
@@ -149,7 +149,7 @@ import { z } from 'zod';
 import {
   SalesforceIdSchema,
   SObjectAttributesSchema,
-} from '../salesforce-common.schema';
+} from '@fixtures/salesforce/schemas/salesforce-common.schema';
 
 /**
  * Every field on ${objectApiName}, as the org defines it.
@@ -261,7 +261,7 @@ export function generateSnapshotFile(
 // @contract test fails, DO NOT hand-edit this file to make it pass — triage the change per the
 // \`salesforce-metadata-contract\` skill.
 
-import type { ObjectSnapshot } from '../describe.schema';
+import type { ObjectSnapshot } from '@fixtures/salesforce/schemas/describe.schema';
 
 export const ${objectApiName}SnapshotByEnv: Partial<Record<string, ObjectSnapshot>> = {
 ${sortedEntries}

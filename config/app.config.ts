@@ -12,7 +12,7 @@
  * file is hoisted and evaluated BEFORE that file's own statements run — so in a standalone entry
  * point that loads its env file itself:
  *
- *     import { appConfig } from '../config/app.config';   // ← evaluated FIRST
+ *     import { appConfig } from '@config/app.config';   // ← evaluated FIRST
  *     dotenv.config({ path: `env/.env.${ENVIRONMENT}` }); // ← runs SECOND, too late
  *
  * …a plain `baseUrl: process.env.BASE_URL ?? '…'` would capture the value from BEFORE the env file

@@ -1,6 +1,6 @@
 import type { Page, Locator } from '@playwright/test';
 import { BasePage } from './base.page';
-import { Routes } from '../enums/util/routes';
+import { Routes } from '@enums/util/routes';
 
 /**
  * EXAMPLE page object for the post-login landing screen. Replace the locators with your app's real

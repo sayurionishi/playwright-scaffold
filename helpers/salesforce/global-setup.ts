@@ -1,8 +1,8 @@
 import { request as playwrightRequest } from '@playwright/test';
-import { ApiRequest } from '../../fixtures/api/api-request';
+import { ApiRequest } from '@fixtures/api/api-request';
 import { getOrgSession, authHeaders } from './auth';
 import { assertApiLimitHeadroom } from './soql';
-import { salesforceConfig } from '../../config/salesforce.config';
+import { salesforceConfig } from '@config/salesforce.config';
 
 /**
  * Playwright `globalSetup` — the org API-limit pre-flight.

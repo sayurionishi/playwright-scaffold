@@ -18,7 +18,7 @@ Functional = many small tests, one behavior each. E2E = ONE test for the whole j
 ## Structure
 
 ```ts
-import { test, expect } from '../../fixtures/test-options';
+import { test, expect } from '@fixtures/test-options';
 
 test.describe('Products', () => {
   test.beforeEach(async ({ productsPage }) => {

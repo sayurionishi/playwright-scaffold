@@ -1,8 +1,8 @@
 import { test as base } from '@playwright/test';
-import { ApiRequest } from '../api/api-request';
-import { ApiEndpoints } from '../../enums/util/api-endpoints';
-import { makeUser } from '../../test-data/factories/user.factory';
-import { UserSchema, type User } from '../api/schemas/user.schema';
+import { ApiRequest } from '@fixtures/api/api-request';
+import { ApiEndpoints } from '@enums/util/api-endpoints';
+import { makeUser } from '@test-data/factories/user.factory';
+import { UserSchema, type User } from '@fixtures/api/schemas/user.schema';
 
 /**
  * Helper fixtures — manage SETUP/TEARDOWN lifecycle for shared test resources.

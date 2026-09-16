@@ -1,6 +1,6 @@
-import { test, expect } from '../../../fixtures/test-options';
-import { fetchDescribe } from '../../../helpers/salesforce/describe';
-import { ORG_SHAPE, ORG_SHAPE_IS_EMPTY } from '../../../test-data/salesforce/contracts/org-shape';
+import { test, expect } from '@fixtures/test-options';
+import { fetchDescribe } from '@helpers/salesforce/describe';
+import { ORG_SHAPE, ORG_SHAPE_IS_EMPTY } from '@test-data/salesforce/contracts/org-shape';
 
 /**
  * ORG-SHAPE PRE-FLIGHT. Runs in the `org` project (no browser). Tag: @contract.

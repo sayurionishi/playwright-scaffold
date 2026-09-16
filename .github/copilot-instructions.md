@@ -60,7 +60,9 @@ If `PROJECT.md` does NOT exist, this is a fresh clone — **bootstrap it first**
 
 - `config/` URLs+secrets (env) · `enums/` paths/routes/messages · `helpers/` waits+auth · `pages/` POM · `test-data/` factories+static · `fixtures/` api+pom+helper+`test-options.ts` · `tests/` api/functional/e2e.
 - **API / UI / E2E are separate Playwright projects**, not just folders. The seam is _what is the system under test_. API-as-setup is a fixture inside UI tests; API-as-SUT is the `api` project.
-- Every spec imports from `fixtures/test-options` — never from `@playwright/test` directly.
+- Every spec imports from `@fixtures/test-options` — never from `@playwright/test` directly.
+- **Never write `../` in an import.** Use the tsconfig aliases — `@pages` `@fixtures` `@helpers`
+  `@enums` `@config` `@test-data` `@rules`. Lint fails on a climbing path. `./sibling` is fine.
 
 ## Workflow
 

@@ -1,8 +1,8 @@
 import type { Page } from '@playwright/test';
 import { BasePage } from './base.page';
-import { Routes } from '../enums/util/routes';
-import { ApiEndpoints } from '../enums/util/api-endpoints';
-import { waitForRest } from '../helpers/util/network';
+import { Routes } from '@enums/util/routes';
+import { ApiEndpoints } from '@enums/util/api-endpoints';
+import { waitForRest } from '@helpers/util/network';
 
 /**
  * ⭐ REFERENCE IMPLEMENTATION — keep this green.

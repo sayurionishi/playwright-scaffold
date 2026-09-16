@@ -1,18 +1,15 @@
-import { test, expect } from '../../../fixtures/test-options';
-import { SObjects } from '../../../enums/salesforce/sobjects';
-import { recordViewPattern } from '../../../enums/salesforce/lightning-routes';
-import { SalesforceApi } from '../../../enums/salesforce/salesforce-api';
-import {
-  makeAccount,
-  makeAccountTree,
-} from '../../../test-data/salesforce/factories/account.factory';
-import { treeId } from '../../../helpers/salesforce/soql';
-import { AccountPhoneSchema } from '../../../fixtures/salesforce/schemas/account.schema';
+import { test, expect } from '@fixtures/test-options';
+import { SObjects } from '@enums/salesforce/sobjects';
+import { recordViewPattern } from '@enums/salesforce/lightning-routes';
+import { SalesforceApi } from '@enums/salesforce/salesforce-api';
+import { makeAccount, makeAccountTree } from '@test-data/salesforce/factories/account.factory';
+import { treeId } from '@helpers/salesforce/soql';
+import { AccountPhoneSchema } from '@fixtures/salesforce/schemas/account.schema';
 import {
   waitForRecordLoad,
   waitForRecordSave,
   waitForListRecords,
-} from '../../../helpers/salesforce/lightning';
+} from '@helpers/salesforce/lightning';
 
 /**
  * EXAMPLE Salesforce UI tests — BEHAVIOUR, not field metadata.

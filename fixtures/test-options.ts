@@ -9,7 +9,7 @@ import { test as salesforcePersonaTest } from './salesforce/persona-fixture';
 /**
  * THE single import point for every spec file.
  *
- *   import { test, expect } from '../../fixtures/test-options';
+ *   import { test, expect } from '@fixtures/test-options';
  *
  * Never import `test` from '@playwright/test' directly — that bypasses all custom
  * fixtures (api, page objects, helpers). Merge new fixture modules here with mergeTests.

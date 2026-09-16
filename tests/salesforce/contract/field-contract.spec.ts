@@ -1,7 +1,7 @@
-import { test, expect } from '../../../fixtures/test-options';
-import { ALL_CONTRACTS } from '../../../test-data/salesforce/contracts/account.contract';
-import { fetchDescribe } from '../../../helpers/salesforce/describe';
-import { assertObjectShape } from '../../../helpers/salesforce/contract';
+import { test, expect } from '@fixtures/test-options';
+import { ALL_CONTRACTS } from '@test-data/salesforce/contracts/account.contract';
+import { fetchDescribe } from '@helpers/salesforce/describe';
+import { assertObjectShape } from '@helpers/salesforce/contract';
 
 /**
  * SHAPE contract — field types, lengths, nillable, picklist values, reference targets, record types.

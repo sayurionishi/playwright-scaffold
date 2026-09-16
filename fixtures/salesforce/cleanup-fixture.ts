@@ -1,11 +1,6 @@
 import { test as orgTest } from './org-fixture';
-import type { ApiRequest } from '../api/api-request';
-import {
-  createRecord,
-  createTree,
-  deleteRecordQuietly,
-  treeIds,
-} from '../../helpers/salesforce/soql';
+import type { ApiRequest } from '@fixtures/api/api-request';
+import { createRecord, createTree, deleteRecordQuietly, treeIds } from '@helpers/salesforce/soql';
 import type { CompositeTreeResponse } from './schemas/salesforce-common.schema';
 
 /**

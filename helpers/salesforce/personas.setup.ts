@@ -2,9 +2,9 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { test as setup, expect } from '@playwright/test';
 import { getOrgSession, applySession } from './auth';
-import { salesforceConfig } from '../../config/salesforce.config';
-import { UI_PERSONAS } from '../../test-data/salesforce/personas';
-import { LightningRoutes } from '../../enums/salesforce/lightning-routes';
+import { salesforceConfig } from '@config/salesforce.config';
+import { UI_PERSONAS } from '@test-data/salesforce/personas';
+import { LightningRoutes } from '@enums/salesforce/lightning-routes';
 
 /**
  * Salesforce auth setup — one authenticated storageState PER PERSONA, PER ENVIRONMENT.

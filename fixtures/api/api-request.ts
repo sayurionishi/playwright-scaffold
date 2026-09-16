@@ -1,7 +1,7 @@
 import type { APIRequestContext, APIResponse } from '@playwright/test';
 import type { TypeOf, ZodType, ZodTypeDef } from 'zod';
 import { ZodError } from 'zod';
-import { appConfig } from '../../config/app.config';
+import { appConfig } from '@config/app.config';
 
 /** Any Zod schema capable of parsing an untrusted JSON body. */
 type BodySchema = ZodType<unknown, ZodTypeDef, unknown>;

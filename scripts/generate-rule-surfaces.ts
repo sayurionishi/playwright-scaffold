@@ -21,14 +21,8 @@
 import path from 'node:path';
 import { promises as fs } from 'node:fs';
 import { format as prettierFormat, resolveConfig as resolvePrettierConfig } from 'prettier';
-import {
-  CONSTITUTION,
-  applyToFor,
-  rulesByTopic,
-  scopeGaps,
-  type Topic,
-} from '../rules/constitution';
-import { TASK_PROMPTS, type TaskPrompt } from '../rules/tasks';
+import { CONSTITUTION, applyToFor, rulesByTopic, scopeGaps, type Topic } from '@rules/constitution';
+import { TASK_PROMPTS, type TaskPrompt } from '@rules/tasks';
 
 const ROOT = process.cwd();
 const CHECK_ONLY = process.argv.includes('--check');

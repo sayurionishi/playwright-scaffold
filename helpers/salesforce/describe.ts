@@ -5,8 +5,8 @@
  * to a stable snapshot so the `@contract` drift test is about real contract change, not noise.
  */
 
-import type { ApiRequest } from '../../fixtures/api/api-request';
-import { SalesforceApi } from '../../enums/salesforce/salesforce-api';
+import type { ApiRequest } from '@fixtures/api/api-request';
+import { SalesforceApi } from '@enums/salesforce/salesforce-api';
 import {
   DescribeResultSchema,
   ObjectInfoSchema,
@@ -15,7 +15,7 @@ import {
   type FieldSnapshot,
   type ObjectInfo,
   type ObjectSnapshot,
-} from '../../fixtures/salesforce/schemas/describe.schema';
+} from '@fixtures/salesforce/schemas/describe.schema';
 
 /** Fetch full org-wide field metadata for an object. The schema-generation source. */
 export async function fetchDescribe(

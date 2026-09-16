@@ -16,7 +16,8 @@ applyTo: 'tests/**'
 
 <!-- END GENERATED: rules -->
 
-- Import `{ test, expect }` from `fixtures/test-options` — never `@playwright/test` directly.
+- Import `{ test, expect }` from `@fixtures/test-options` — never `@playwright/test` directly.
+- No `../` in imports: use `@pages` / `@fixtures` / `@helpers` / `@enums` / `@config` / `@test-data`.
 - Folder = project = system under test: `tests/functional/` (one screen), `tests/e2e/` (full journey), `tests/api/` (backend).
 - Functional = many small tests, one behavior each (<50 lines). E2E = ONE test for the whole journey.
 - `describe` per feature; `beforeEach` for arrange; `test.step` for Given/When/Then.

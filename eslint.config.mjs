@@ -88,6 +88,30 @@ export default tseslint.config(
       '@typescript-eslint/no-floating-promises': 'error',
       '@typescript-eslint/await-thenable': 'error',
       'no-console': ['warn', { allow: ['warn', 'error'] }],
+      /* ── Import hygiene — keeps the tsconfig aliases alive ──────────────────────────────────
+         `tsconfig.json` declares @pages/@fixtures/@helpers/@enums/@config/@test-data/@rules, and
+         for a long time NOTHING used them: 110 imports climbed with `../` instead, one spec
+         reaching `../../../` on all ten of its imports, and `config/salesforce.config` reachable
+         by four different strings depending on the importer's depth. The aliases were configured
+         and inert, which is worse than absent — a reader of tsconfig.json reasonably concludes
+         the convention is in force.
+
+         Rewriting the imports without this rule would just restart that clock. Sibling `./`
+         imports stay legal: they are already short, they carry no depth information to go stale,
+         and two fatal-if-missing anchors in scripts/prune.ts match on them verbatim. */
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              group: ['../*'],
+              message:
+                'Use a tsconfig path alias instead of climbing directories: @pages, @fixtures, ' +
+                '@helpers, @enums, @config, @test-data, @rules. Sibling "./" imports are fine.',
+            },
+          ],
+        },
+      ],
     },
   },
   {

@@ -1,8 +1,8 @@
 import fs from 'node:fs';
 import { test as base, type BrowserContext, type Page } from '@playwright/test';
-import { salesforceConfig } from '../../config/salesforce.config';
-import { LightningRecordPage } from '../../pages/salesforce/lightning-record.page';
-import { ListViewPage } from '../../pages/salesforce/list-view.page';
+import { salesforceConfig } from '@config/salesforce.config';
+import { LightningRecordPage } from '@pages/salesforce/lightning-record.page';
+import { ListViewPage } from '@pages/salesforce/list-view.page';
 
 /**
  * Persona-scoped browser contexts.

@@ -18,19 +18,22 @@ Functional = many small tests, one behavior each. E2E = ONE test for the whole j
 ## Structure
 
 ```ts
-import { test, expect } from '../../fixtures/test-options';
+import { test, expect } from '@fixtures/test-options';
 
 test.describe('Products', () => {
   test.beforeEach(async ({ productsPage }) => {
     await productsPage.goto();
   });
 
-  test('creates a product', { tag: '@smoke' }, async ({ productsPage, page }) => {
+  test('creates a product', { tag: '@smoke' }, async ({ productsPage }) => {
     await test.step('When I add a product', async () => {
       await productsPage.addProduct('Widget');
     });
     await test.step('Then it appears in the list', async () => {
-      await expect(page.getByText('Widget')).toBeVisible();
+      // The locator lives on the page object (Constitution #9), so the spec asserts on a named
+      // thing rather than re-deriving it. `expect(page.getByText('Widget'))` would work but is a
+      // raw locator in a spec — lint-enforced against, and it puts markup knowledge in two places.
+      await expect(productsPage.rowByName('Widget')).toBeVisible();
     });
   });
 });
@@ -72,8 +75,13 @@ Use the **structured tag option** (Playwright 1.42+) — `test('name', { tag: '@
 `@smoke` (critical, fast) · `@sanity` · `@regression` (broad) · `@api` · `@e2e` · `@security` ·
 `@contract` (a shape/metadata snapshot, not behavior) · `@persona` (who can see/do what) ·
 `@destructive` (mutates shared state — runs `--workers=1`, **wins** over any other tag, requires cleanup).
-Tag the `test`, never the `describe`. `npm run test:smoke` etc. filter by tag via `--grep`.
-([tag docs](https://playwright.dev/docs/test-annotations#tag-tests))
+
+> The scaffold ships NO `@destructive` test, so `npm run test:destructive` currently discovers zero
+> tests and the default `npm test`'s `--grep-invert @destructive` is a no-op. Both are deliberate
+> forward guards: the first destructive test you add is excluded from the default run and forced
+> serial without anyone having to remember to wire it.
+> Tag the `test`, never the `describe`. `npm run test:smoke` etc. filter by tag via `--grep`.
+> ([tag docs](https://playwright.dev/docs/test-annotations#tag-tests))
 
 `@contract` and `@persona` exist mainly for the `salesforce` profile, where metadata drift and the
 permission matrix are distinct test types you want to run on their own cadence — contract checks on every
@@ -85,6 +93,24 @@ generated contract or a role model can use them. See `salesforce-metadata-contra
 - Tests run in any order, in parallel. No test depends on another's side effects.
 - Create your own data (factory/helper fixture); clean it up in teardown (runs on failure).
 - `@destructive` tests that touch shared state must restore it in `afterEach`/`afterAll`.
+
+### Annotations carry the ticket, not just a comment
+
+Constitution #13 requires a `// FIXME: <ticket>` on any skip. A comment is invisible in the HTML
+report, so pair it with an annotation and the ticket travels with the result:
+
+```ts
+test(
+  'checkout applies the loyalty discount',
+  { tag: '@regression', annotation: [{ type: 'issue', description: 'PROJ-1421' }] },
+  async ({ checkoutPage }) => {
+    // …
+  },
+);
+```
+
+Use `annotation` for the ticket, the tag for the lane. They are different axes — and note the tag
+must stay a single string (#14) while `annotation` is a list.
 
 ## Cleanup
 

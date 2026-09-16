@@ -1,10 +1,16 @@
 import type { Page } from '@playwright/test';
 import { BasePage } from './base.page';
-import { Routes } from '../enums/util/routes';
-import { ApiEndpoints } from '../enums/util/api-endpoints';
-import { waitForRest } from '../helpers/util/network';
+import { Routes } from '@enums/util/routes';
+import { ApiEndpoints } from '@enums/util/api-endpoints';
+import { waitForRest } from '@helpers/util/network';
 
 /**
+ * ⭐ REFERENCE IMPLEMENTATION — keep this green.
+ *
+ * The golden page object (locators on top, actions only, no assertions) — what the assistant copies when asked
+ * for a new one, so it must obey every rule it demonstrates. If a Constitution rule changes, re-read this file:
+ * a reference that violates the current rules teaches the violation.
+ *
  * EXAMPLE page object. Replace locators/actions with your app's real login screen.
  *
  * Demonstrates the scaffold conventions:

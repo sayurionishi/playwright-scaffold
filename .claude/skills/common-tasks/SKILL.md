@@ -1,6 +1,6 @@
 ---
 name: common-tasks
-description: Use as the entry point when the request is a generic "how do I add X?" or "generate a prompt for Y", or when no other skill obviously matches. Routes to the right specialized skill.
+description: Use when the user asks a broad "how do I add X to this scaffold?" or "generate a prompt for Y" and has not named a specific area. Routes the request to the specialized skill that owns it.
 ---
 
 # Common Tasks (router)

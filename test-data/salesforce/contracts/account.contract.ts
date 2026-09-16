@@ -1,6 +1,6 @@
 import type { ObjectContract, PersonaGrantContract } from './contract-types';
-import { Personas } from '../personas';
-import { SObjects } from '../../../enums/salesforce/sobjects';
+import { Personas } from '@test-data/salesforce/personas';
+import { SObjects } from '@enums/salesforce/sobjects';
 
 /**
  * EXAMPLE object contract for Account.

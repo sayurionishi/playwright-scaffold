@@ -24,7 +24,7 @@
  */
 
 import type { Page, Response } from '@playwright/test';
-import { UiApiFragments } from '../../enums/salesforce/salesforce-api';
+import { UiApiFragments } from '@enums/salesforce/salesforce-api';
 
 const DEFAULT_TIMEOUT = 20_000;
 

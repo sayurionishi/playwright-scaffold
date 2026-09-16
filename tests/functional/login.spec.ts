@@ -1,7 +1,13 @@
-import { test, expect } from '../../fixtures/test-options';
-import { UiMessages } from '../../enums/util/ui-messages';
+import { test, expect } from '@fixtures/test-options';
+import { UiMessages } from '@enums/util/ui-messages';
 
 /**
+ * ⭐ REFERENCE IMPLEMENTATION — keep this green.
+ *
+ * The golden functional spec (one screen is the SUT) — what the assistant copies when asked
+ * for a new one, so it must obey every rule it demonstrates. If a Constitution rule changes, re-read this file:
+ * a reference that violates the current rules teaches the violation.
+ *
  * EXAMPLE functional tests — one screen is the system under test.
  *
  * Conventions on show:

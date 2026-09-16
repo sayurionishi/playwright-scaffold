@@ -1,6 +1,6 @@
-import { test, expect } from '../../fixtures/test-options';
-import { ApiEndpoints, buildPath } from '../../enums/util/api-endpoints';
-import { SECURITY_PAYLOADS, INVALID_IDS } from '../../test-data/static/util/invalid-values';
+import { test, expect } from '@fixtures/test-options';
+import { ApiEndpoints, buildPath } from '@enums/util/api-endpoints';
+import { SECURITY_PAYLOADS, INVALID_IDS } from '@test-data/static/util/invalid-values';
 
 /**
  * EXAMPLE security / format-error suite — every field that accepts input MUST be fuzzed.

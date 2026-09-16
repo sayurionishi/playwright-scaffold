@@ -19,8 +19,8 @@
  */
 
 import { z } from 'zod';
-import type { ApiRequest } from '../../fixtures/api/api-request';
-import { SObjectAttributesSchema } from '../../fixtures/salesforce/schemas/salesforce-common.schema';
+import type { ApiRequest } from '@fixtures/api/api-request';
+import { SObjectAttributesSchema } from '@fixtures/salesforce/schemas/salesforce-common.schema';
 import { escapeSoql, soqlQuery } from './soql';
 
 const PermissionSetAssignmentRowSchema = z.strictObject({

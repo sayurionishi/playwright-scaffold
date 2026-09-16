@@ -1,5 +1,5 @@
 import type { Locator, Page } from '@playwright/test';
-import { fillAndBlur } from '../../../helpers/util/forms';
+import { fillAndBlur } from '@helpers/util/forms';
 import { ComboboxComponent } from './combobox.component';
 
 /**

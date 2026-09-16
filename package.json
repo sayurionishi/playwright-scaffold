@@ -13,21 +13,30 @@
     "test:regression": "playwright test --grep @regression",
     "test:security": "playwright test --project=api --grep @security",
     "test:contract": "playwright test --project=org --grep @contract",
-    "test:personas": "playwright test --project=org --grep @persona",
+    "test:personas": "playwright test --project=org --project=salesforce --grep @persona",
     "test:salesforce": "playwright test --project=salesforce",
     "sf:schemas": "tsx scripts/generate-sobject-schemas.ts",
     "sf:visible-fields": "tsx scripts/generate-visible-fields.ts",
     "test:destructive": "playwright test --grep @destructive --workers=1",
     "test:ui": "playwright test --ui",
     "test:debug": "playwright test --debug",
+    "test:shard": "playwright test --reporter=blob --shard",
+    "codegen": "playwright codegen",
+    "update-snapshots": "playwright test --update-snapshots",
     "test:headed": "playwright test --project=functional --headed",
-    "test:ci": "cross-env ENVIRONMENT=ci CI=1 playwright test --workers=1 --retries=0",
     "report": "playwright show-report",
-    "lint": "eslint .",
+    "report:merge": "playwright merge-reports --reporter=html ./all-blob-reports",
+    "lint": "eslint . --max-warnings=0",
     "lint:fix": "eslint . --fix",
+    "guard": "tsx scripts/constitution-guard.ts",
+    "prune": "tsx scripts/prune.ts",
     "format": "prettier --write .",
+    "format:check": "prettier --check .",
     "typecheck": "tsc --noEmit",
-    "prepare": "husky"
+    "rules:generate": "tsx scripts/generate-rule-surfaces.ts",
+    "rules:check": "tsx scripts/generate-rule-surfaces.ts --check",
+    "prepare": "husky",
+    "install:browsers": "playwright install --with-deps"
   },
   "keywords": [
     "playwright",
@@ -40,7 +49,7 @@
   "license": "MIT",
   "devDependencies": {
     "@eslint/js": "^9.17.0",
-    "@playwright/test": "^1.49.1",
+    "@playwright/test": "^1.60.0",
     "@types/node": "^22.10.5",
     "cross-env": "^7.0.3",
     "eslint": "^9.17.0",
@@ -65,5 +74,8 @@
     "*.{json,md}": [
       "prettier --write"
     ]
+  },
+  "engines": {
+    "node": ">=20.0.0"
   }
 }

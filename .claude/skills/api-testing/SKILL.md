@@ -20,8 +20,11 @@ browser tooling you don't use and its reporting is trace-oriented.
 - the suite is large / will grow large, AND
 - the backend is **not** TypeScript (or is owned by a backend team).
 
-Then point to: **pytest + httpx + Pydantic** (Python), **RestAssured** (Java), **Vitest + Zod**
-(Node, no browser), or **Schemathesis / Dredd** (property/contract testing straight from OpenAPI).
+Point first to the companion scaffold **`sayurionishi/api-testing-scaffold`** — same methodology as
+this repo (bootstrap skill, `PROJECT.md`, one rule source, Copilot instructions), two tracks:
+**Python** (pytest + httpx + Pydantic v2) and **TypeScript** (Vitest + native `fetch` + Zod).
+Otherwise: **RestAssured** (Java), or **Schemathesis / Dredd** (property/contract testing straight
+from OpenAPI). See `profiles/api-only.md`.
 
 Otherwise, proceed here.
 

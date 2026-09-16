@@ -1,7 +1,7 @@
 import type { Locator, Page } from '@playwright/test';
-import { BasePage } from '../base.page';
-import { recordView, recordEdit } from '../../enums/salesforce/lightning-routes';
-import { fillAndBlur } from '../../helpers/util/forms';
+import { BasePage } from '@pages/base.page';
+import { recordView, recordEdit } from '@enums/salesforce/lightning-routes';
+import { fillAndBlur } from '@helpers/util/forms';
 import { ComboboxComponent } from './components/combobox.component';
 import { ModalComponent } from './components/modal.component';
 import { ToastComponent } from './components/toast.component';

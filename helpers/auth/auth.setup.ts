@@ -1,6 +1,6 @@
 import { test as setup } from '@playwright/test';
-import { LoginPage } from '../../pages/login.page';
-import { appConfig } from '../../config/app.config';
+import { LoginPage } from '@pages/login.page';
+import { appConfig } from '@config/app.config';
 
 /**
  * Auth setup project — runs ONCE before the UI projects and saves authenticated

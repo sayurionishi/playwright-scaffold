@@ -15,7 +15,7 @@ fixtures/
 └── test-options.ts  ← mergeTests(...) — the ONLY thing specs import
 ```
 
-Every spec: `import { test, expect } from '<...>/fixtures/test-options';`
+Every spec: `import { test, expect } from '@fixtures/test-options';`
 Importing `test` from `@playwright/test` directly is a bug — it bypasses all custom fixtures.
 
 ## Page-object fixtures

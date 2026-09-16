@@ -35,6 +35,50 @@ If you keep a `networkidle`, leave an inline comment saying _why this page goes 
 1. **Wait for the specific gating response** — `waitForRest` / `waitForGraphQL` in `helpers/util/network.ts`. Use when a network call gates the next step.
 2. **Web-first assertion on a DOM signal** — `toBeVisible`, `toBeHidden`, `toBeEnabled`, `toHaveValue`, `toContainText`. Playwright auto-retries these until the timeout. This is the default for "is the screen ready?".
 3. **`waitForURL`** — for navigations.
+4. **`expect.poll` / `expect(...).toPass()`** — for a condition that is NEITHER a DOM signal nor a single response: eventual consistency. This is the answer whenever the state you need arrives asynchronously _after_ the call that triggered it returned.
+
+### 4 in detail — the one people reach for `waitForTimeout` instead of
+
+Levels 1–3 cover "a request gates this" and "an element gates this". They do NOT cover "the write
+succeeded, but the value I want is computed afterwards". That gap is why people write a sleep —
+so this level exists to remove the excuse.
+
+```ts
+// ❌ races an asynchronous recalculation. Passes locally, fails one run in five.
+await createOrder(api, { accountId });
+const { data } = await api.get(accountPath, { schema: AccountSchema });
+expect(data.OrderCount).toBe(3);
+
+// ❌ the "fix" that Constitution #1 bans, and it is still a race — just a slower one.
+await page.waitForTimeout(5000);
+
+// ✅ poll the value until it settles. Bounded, and it fails with the LAST value it saw.
+await expect
+  .poll(async () => (await api.get(accountPath, { schema: AccountSchema })).data.OrderCount, {
+    timeout: 15_000,
+    intervals: [500, 1_000, 2_000],
+  })
+  .toBe(3);
+
+// ✅ toPass when several assertions must all hold at the same moment
+await expect(async () => {
+  const { data } = await api.get(orderPath, { schema: OrderSchema });
+  expect(data.status).toBe('CONFIRMED');
+  expect(data.total).toBe(4200);
+}).toPass({ timeout: 15_000 });
+```
+
+Two rules for using it:
+
+- **Poll a real signal, not a duration.** `expect.poll` is not a sleep with extra steps: it exits
+  the moment the condition holds, and on failure it reports the last value it observed, so a
+  timeout tells you _what_ was wrong rather than just _that_ it timed out.
+- **Bound it, and treat a long bound as a finding.** If a value needs 30s to settle, that is
+  something to know about the system, not a number to raise quietly (Constitution #13).
+
+On Salesforce this is not an edge case — a `201` is not final state, because after-save Flows,
+`@future`/Queueable/Batch Apex, Platform Events and roll-up recalculation all land after the API
+returns. See **`salesforce-async`**.
 
 ## THE GOLDEN RULE — pre-register before you trigger
 
@@ -139,7 +183,14 @@ test.setTimeout(120_000); // explicit; requires a comment justifying it
 
 ## When waitForTimeout is _grudgingly_ acceptable
 
-Only for a non-network animation with no DOM/network signal, with a `// TODO` and a tracking ticket. Treat as a smell.
+Almost never — and check level 4 above first. "There is no signal to wait for" is usually "the
+signal is a value that settles asynchronously", which is exactly what `expect.poll` is for. This
+skill used to stop at level 3, so the only escape hatch it offered was the sleep that Constitution
+#1 bans; that was a real gap and it sent people to the one answer the rules forbid.
+
+What genuinely remains: a non-network CSS/canvas animation with no DOM or network signal at all,
+with a `// TODO` and a tracking ticket. Treat it as a smell, and note it is lint-blocked — a kept
+use needs an inline disable directive with the reason.
 
 ## Checklist
 
@@ -149,4 +200,6 @@ Only for a non-network animation with no DOM/network signal, with a `// TODO` an
 - [ ] Screen-readiness uses a web-first assertion, not a sleep.
 - [ ] Loader waits use partial-match or testid + `.first()`.
 - [ ] Save-after-fill flows blur to commit the dirty flag.
+- [ ] Eventual consistency uses `expect.poll` / `toPass` with a bounded timeout — never a sleep.
+- [ ] No derived value (rollup, formula, computed total) is asserted straight off the write response.
 - [ ] No timeout was RAISED to make a failure go away (#13). Slow-by-nature tests use `test.slow()`.

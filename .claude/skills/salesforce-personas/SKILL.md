@@ -51,17 +51,17 @@ which axis broke. A persona differing on three axes at once produces failures yo
 The four axes: **CRUD** (object-level) · **FLS** (field-level) · **SHARING** (which records) ·
 **UI** (can it use a browser at all).
 
-| Persona           | CRUD            | FLS             | Sharing               | UI     | Purpose  | Isolates                |
-| ----------------- | --------------- | --------------- | --------------------- | ------ | -------- | ----------------------- |
-| `sysAdmin`        | all + ModifyAll | all             | bypasses              | yes    | arrange  | — never asserted        |
-| `fullAccess`      | CRUD+D          | all fields      | normal                | yes    | control  | grant correctness       |
-| `standardUser`    | CRU, no D       | all fields      | normal                | yes    | subject  | the realistic default   |
-| `limitedFields`   | CRU, no D       | **some hidden** | normal                | yes    | subject  | **FLS**                 |
-| `readOnly`        | **R only**      | all fields      | normal                | yes    | subject  | **CRUD**                |
-| `noAccess`        | **none**        | none            | normal                | yes    | boundary | **the deny path**       |
-| `manager`         | CRU             | all             | **above** subordinate | yes    | control  | **sharing** (sees down) |
-| `subordinate`     | CRU             | all             | **below** manager     | yes    | subject  | **sharing** (not up)    |
-| `integrationUser` | CRUD (API)      | all             | normal                | **no** | boundary | **UI axis**             |
+| Persona           | CRUD            | FLS             | Sharing               | UI     | Purpose  | Isolates                           |
+| ----------------- | --------------- | --------------- | --------------------- | ------ | -------- | ---------------------------------- |
+| `sysAdmin`        | all + ModifyAll | all             | bypasses              | yes    | arrange  | — never asserted                   |
+| `fullAccess`      | CRUD+D          | all fields      | normal                | yes    | control  | grant correctness, no admin bypass |
+| `standardUser`    | CRU, no D       | all fields      | normal                | yes    | subject  | the realistic default              |
+| `limitedFields`   | CRU, no D       | **some hidden** | normal                | yes    | subject  | **FLS**                            |
+| `readOnly`        | **R only**      | all fields      | normal                | yes    | subject  | **CRUD**                           |
+| `noAccess`        | **none**        | none            | normal                | yes    | boundary | **the deny path**                  |
+| `manager`         | CRU             | all             | **above** subordinate | yes    | control  | **sharing** (sees down)            |
+| `subordinate`     | CRU             | all             | **below** manager     | yes    | subject  | **sharing** (can't see up)         |
+| `integrationUser` | CRUD (API)      | all             | normal                | **no** | boundary | **UI axis**                        |
 
 Read the pairs — this is the whole point:
 
@@ -190,6 +190,26 @@ Unlike FLS, object-level and record-level denial are explicit:
 Note the `404`: Salesforce hides existence to avoid leaking it. So "record not visible" and "record not
 found" look identical from outside — assert `404` and don't try to distinguish them.
 
+### The rest of the taxonomy — errors that are NOT permission failures
+
+The four above are about _access_. A write can also fail for reasons that have nothing to do with
+the persona, and mistaking one for the other is how a permission test starts lying: a
+`FIELD_CUSTOM_VALIDATION_EXCEPTION` looks like "the persona can't do this" when it actually means
+"nobody can, because the data is invalid".
+
+| Response                                           | What it actually means                                                                                                                          |
+| -------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| `400` / `FIELD_CUSTOM_VALIDATION_EXCEPTION`        | A **validation rule** rejected the record. Not a permission problem — the record is invalid for everyone. Fix the data; never disable the rule. |
+| `400` / `REQUIRED_FIELD_MISSING`                   | A required field is missing — and requiredness is **layout- and record-type-dependent**, so this can fire for one persona and not another.      |
+| `400` / `DUPLICATES_DETECTED` or `DUPLICATE_VALUE` | A **duplicate/matching rule** blocked the create. Randomise more of the record (`salesforce-data`).                                             |
+| `400` / `INVALID_FIELD`                            | The field name does not exist in THIS org — usually a managed-package namespace assumption, or a field name written from memory (rule #15).     |
+| `400` / `STORAGE_LIMIT_EXCEEDED`                   | The org is out of data storage. Orphaned test data is the usual cause — deletes go to the Recycle Bin and still consume storage.                |
+| `503` / `UNABLE_TO_LOCK_ROW`                       | Row-lock contention, usually from parallel workers touching the same parent. A concurrency problem, not a permission one.                       |
+
+When you assert a denial, **assert the specific code**, not just "it failed". `expectStatus: 400`
+alone passes for a validation rule, a missing field, a dupe rule, and a genuine FLS denial — so a
+broken permission model still looks tested.
+
 ### Record-level access, precisely
 
 `UserRecordAccess` answers the sharing question directly:
@@ -246,6 +266,24 @@ for (const grant of grants) {
   expect.soft(grant.modifyAll, `${grant.source} grants ModifyAll to ${persona.key}`).toBe(false);
 }
 ```
+
+### A second layer for UI absence: ARIA snapshots
+
+`expect(fieldValue('Annual Revenue')).toBeHidden()` passes when the locator matches ZERO elements —
+which is also what a wrong locator produces. The positive control (above) is the primary defence.
+A `toMatchAriaSnapshot` of the Details region is a useful **second** layer, and it suits Lightning
+unusually well: the DOM is generated and unstable, but the ARIA tree is comparatively stable, and a
+snapshot asserts the whole rendered field set at once rather than one absence at a time.
+
+```ts
+await expect(recordPage.detailsRegion).toMatchAriaSnapshot(`
+  - text: Account Name
+  - text: Phone
+`);
+```
+
+Use it as a supplement, not a replacement: a snapshot tells you the set changed, while the
+positive/negative pair tells you _which_ persona-visible field changed and why that matters.
 
 ## The visible-field SET — the strongest assertion here
 
@@ -313,6 +351,23 @@ const rtId = Object.values(data.recordTypeInfos).find(
 ```
 
 Restricted picklists also vary per record type — a value valid for one persona may be rejected for another.
+
+## Experience Cloud / partner and guest users
+
+If the org has a community or portal, its users are a different problem from internal personas:
+a different **licence**, a different **sharing model** (external org-wide defaults, sharing sets,
+share groups rather than role hierarchy), and — for guest users — **no authenticated identity at
+all**.
+
+This pack ships no community persona, deliberately: the sharing model is different enough that
+modelling it as "one more row in the lattice" would be misleading. But it is worth knowing that
+**guest-user over-exposure is a real, frequently-reported security finding** — a guest profile with
+read on an object it should not have is exactly the misconfiguration nobody notices, because no
+internal test runs as a guest.
+
+If your org has a community, add a guest persona explicitly and give it the same treatment as
+`noAccess`: it is a boundary, and the assertions must be able to fail. A guest identity needs no
+credentials, so the "authenticate as this persona" step is different — see `salesforce-auth`.
 
 ## Don't
 

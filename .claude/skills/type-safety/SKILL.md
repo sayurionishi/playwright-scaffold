@@ -1,6 +1,6 @@
 ---
 name: type-safety
-description: Use when writing or refactoring a Zod schema, converting an `any` to a real type, or designing typed request/response contracts. Enforces strict typing and runtime validation.
+description: Use when writing or refactoring a Zod schema, converting an `any` to a real type, or designing typed request/response contracts. Enforces strict typing and runtime validation. For Zod schemas describing Salesforce sObjects, load salesforce-metadata-contract instead — describe is the contract there.
 ---
 
 # Type Safety
@@ -25,6 +25,16 @@ const { data } = await api.get(path, { schema: UserSchema }); // throws on drift
 // or explicitly:
 expect(UserSchema.parse(body)).toBeTruthy();
 ```
+
+**This is enforced by the compiler, not by discipline.** `ApiRequest` derives the result type from
+the schema: pass one and `data` is the schema's output; omit it and `data` is `unknown`, so any
+field access is a type error. There is no way to receive typed-but-unvalidated data — that used to
+be possible (`api.post<{ id: string }>(path, { data })` returned a fully-typed fiction) and it is
+what made Constitution #7 breakable by accident. Schema-less calls are still fine when you never
+read the body: a 204, a status-only assertion, best-effort teardown.
+
+A schema mismatch throws with the method, URL, status, the Zod issue paths, and a truncated body —
+enough to file the drift without re-running anything.
 
 Type generics alone are NOT enough — they're erased at runtime. The `.parse()` is what catches drift.
 

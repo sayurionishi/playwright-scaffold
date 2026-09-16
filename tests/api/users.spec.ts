@@ -1,10 +1,16 @@
-import { test, expect } from '../../fixtures/test-options';
-import { ApiEndpoints, buildPath } from '../../enums/util/api-endpoints';
-import { UserSchema, UserListSchema } from '../../fixtures/api/schemas/user.schema';
-import { ErrorResponseSchema } from '../../fixtures/api/schemas/_error.schema';
-import { makeUser } from '../../test-data/factories/user.factory';
+import { test, expect } from '@fixtures/test-options';
+import { ApiEndpoints, buildPath } from '@enums/util/api-endpoints';
+import { UserSchema, UserListSchema } from '@fixtures/api/schemas/user.schema';
+import { ErrorResponseSchema } from '@fixtures/api/schemas/_error.schema';
+import { makeUser } from '@test-data/factories/user.factory';
 
 /**
+ * ⭐ REFERENCE IMPLEMENTATION — keep this green.
+ *
+ * The golden API spec (the backend is the SUT) — what the assistant copies when asked
+ * for a new one, so it must obey every rule it demonstrates. If a Constitution rule changes, re-read this file:
+ * a reference that violates the current rules teaches the violation.
+ *
  * EXAMPLE API suite — the backend is the system under test. Runs in the `api` project
  * (no browser). Every test is tagged @api.
  *
@@ -39,8 +45,14 @@ test.describe('POST /users', () => {
         expect(data.email).toBe(draft.email);
       });
 
-      // teardown
-      await api.delete(buildPath(ApiEndpoints.USER_BY_ID, { id: data.id })).catch(() => {});
+      // Teardown. Best-effort ON PURPOSE, and the comment is the point: a cleanup failure must
+      // never overwrite the assertion result the test just reported. Constitution #13 forbids a
+      // BARE empty catch — swallowing an error with no explanation — not a deliberate one that
+      // says why. If teardown reliability matters more than that, move it into a fixture, where
+      // Playwright guarantees it runs even on a test timeout (see the `trackedRecords` fixture).
+      await api.delete(buildPath(ApiEndpoints.USER_BY_ID, { id: data.id })).catch(() => {
+        /* ignored: teardown must not mask the test's own result */
+      });
     },
   );
 

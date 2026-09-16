@@ -4,6 +4,13 @@ applyTo: 'pages/**'
 
 # Page objects & selectors (mirror of `.claude/skills/page-objects` + `selectors`)
 
+<!-- BEGIN GENERATED: rules — edit rules/constitution.ts, run npm run rules:generate -->
+
+- **Rule #3** — XPath, CSS-class, nth-child, or auto-generated-id selectors. Semantic / testId per the active profile (`selectors`)
+- **Rule #8** — Assertions inside a page object. Page objects act; specs assert
+
+<!-- END GENERATED: rules -->
+
 - Page objects **act and expose locators; they never assert** (no `expect`, no `isVisible()` wrappers). Specs assert.
 - **Locators-on-top:** every locator is a class field. `readonly` (public) if a spec asserts on it; `private readonly` if internal. Never declare locators inline in methods.
 - Extends `BasePage`. `page` is `protected` — specs use the `page` fixture for URL asserts.

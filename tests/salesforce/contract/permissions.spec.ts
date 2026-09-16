@@ -1,24 +1,21 @@
-import { test, expect } from '../../../fixtures/test-options';
-import {
-  ALL_CONTRACTS,
-  PersonaGrants,
-} from '../../../test-data/salesforce/contracts/account.contract';
-import { Personas, ASSERTABLE_PERSONAS } from '../../../test-data/salesforce/personas';
-import { salesforceConfig } from '../../../config/salesforce.config';
-import { fetchObjectInfo } from '../../../helpers/salesforce/describe';
+import { test, expect } from '@fixtures/test-options';
+import { ALL_CONTRACTS, PersonaGrants } from '@test-data/salesforce/contracts/account.contract';
+import { Personas, ASSERTABLE_PERSONAS } from '@test-data/salesforce/personas';
+import { salesforceConfig } from '@config/salesforce.config';
+import { fetchObjectInfo } from '@helpers/salesforce/describe';
 import {
   assertObjectCrud,
   assertFieldAccess,
   assertVisibleFieldSet,
-} from '../../../helpers/salesforce/contract';
+} from '@helpers/salesforce/contract';
 import {
   assignedPermissionSets,
   objectPermissionsFor,
   requireUserByUsername,
-} from '../../../helpers/salesforce/permissions';
-import { SalesforceApi } from '../../../enums/salesforce/salesforce-api';
-import { SObjects, SalesforceErrorCodes } from '../../../enums/salesforce/sobjects';
-import { SalesforceErrorListSchema } from '../../../fixtures/salesforce/schemas/salesforce-common.schema';
+} from '@helpers/salesforce/permissions';
+import { SalesforceApi } from '@enums/salesforce/salesforce-api';
+import { SObjects, SalesforceErrorCodes } from '@enums/salesforce/sobjects';
+import { SalesforceErrorListSchema } from '@fixtures/salesforce/schemas/salesforce-common.schema';
 
 /**
  * PERMISSION contract — grants, object CRUD, field-level security, and the visible-field set.

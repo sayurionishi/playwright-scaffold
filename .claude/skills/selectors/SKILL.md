@@ -1,6 +1,6 @@
 ---
 name: selectors
-description: Use when choosing a locator for any element, fixing a strict-mode/locator-not-found error, or adapting locator strategy to the app type (generic, controlled-source, Salesforce). Reads the active profile from PROJECT.md.
+description: Use when choosing a locator for any element, fixing a strict-mode violation or a locator-not-found error, or adapting locator strategy to the app type (generic, controlled-source). Reads the active profile from PROJECT.md. For a Salesforce/Lightning org load salesforce-locators instead — this skill defers to it.
 ---
 
 # Selectors — Locator Strategy
@@ -24,7 +24,11 @@ Never guess a selector. Open the live element with **playwright-cli** (`navigate
 because you can add `data-testid` to the app you own — it's the most stable. Read `PROJECT.md` to
 know which is active; if absent, use `generic`.
 
-## Prohibited everywhere (ESLint + review)
+## Prohibited everywhere (review — NOT currently lint-enforced)
+
+⚠️ Nothing below is caught by a tool today: there is no ESLint rule banning XPath or CSS-class
+selectors in this repo. Treat these as review rules, and do not assume a green build means clean
+locators.
 
 ```ts
 page.locator('.btn-primary'); // ❌ CSS class — changes; CSS-modules hash it

@@ -1,8 +1,8 @@
 import { test as base, request as playwrightRequest } from '@playwright/test';
-import { ApiRequest } from '../api/api-request';
-import { getOrgSession, authHeaders, type OrgSession } from '../../helpers/salesforce/auth';
-import { salesforceConfig } from '../../config/salesforce.config';
-import { Personas, assertAssertable, type Persona } from '../../test-data/salesforce/personas';
+import { ApiRequest } from '@fixtures/api/api-request';
+import { getOrgSession, authHeaders, type OrgSession } from '@helpers/salesforce/auth';
+import { salesforceConfig } from '@config/salesforce.config';
+import { Personas, assertAssertable, type Persona } from '@test-data/salesforce/personas';
 
 /**
  * Salesforce org API fixtures.

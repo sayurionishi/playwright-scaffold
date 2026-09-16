@@ -7,6 +7,15 @@
 - **App / service name:** <name>
 - **What we test:** <UI | API | both>
 - **App type / profile:** <generic | controlled | salesforce | api-only>  → see `profiles/<profile>.md`
+- **Salesforce pack:** <kept — why | removed>
+  <!-- If the profile is not `salesforce`, bootstrap offers `npm run prune -- --pack=salesforce`
+       (about half the repo, ~1,700 always-loaded tokens per session). Record the answer so a later session does
+       not re-offer it, and if you KEPT it say why — the pack is inert without SF_LOGIN_URL, so
+       keeping it is a valid choice rather than a loose end. -->
+- **Financial Services Cloud (FSC)?** <yes — `salesforce-fsc` applies | no — tier 3 not used>
+  <!-- Only meaningful on the `salesforce` profile. `no` means the 8 tier-2 skills are the whole
+       pack; `npm run prune -- --pack=salesforce-fsc` drops tier 3 if you want it gone. Person
+       Accounts are NOT an FSC question — ask separately; they live in `salesforce-data`. -->
 - **Tech stack (under test):** <e.g. React SPA, Salesforce Lightning, FastAPI backend>
 
 ## Locator strategy (active)

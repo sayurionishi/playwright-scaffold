@@ -1,0 +1,38 @@
+# Nothing was watching the dependency tree, and two things made that worse than usual:
+#
+#  1. Every range in package.json is a caret, and the lockfile had already drifted a long way
+#     (@playwright/test was declared ^1.49.1 while the lock resolved 1.60.0).
+#  2. The Playwright PACKAGE and its BROWSER BINARIES must stay in lockstep. A silent minor bump
+#     that lands without the matching `playwright install` fails in a way that looks like a test
+#     bug rather than a dependency one — and the CI browser cache is keyed on that version.
+#
+# Grouped so one PR updates Playwright and its plugins together rather than three racing PRs.
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: '/'
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      playwright:
+        patterns:
+          - '@playwright/*'
+          - 'playwright'
+          - 'eslint-plugin-playwright'
+      linting:
+        patterns:
+          - 'eslint'
+          - '@eslint/*'
+          - 'typescript-eslint'
+          - 'prettier'
+          - 'lint-staged'
+          - 'husky'
+      types:
+        patterns:
+          - '@types/*'
+
+  - package-ecosystem: github-actions
+    directory: '/'
+    schedule:
+      interval: monthly

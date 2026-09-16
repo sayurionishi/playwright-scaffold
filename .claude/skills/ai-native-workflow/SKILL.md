@@ -1,6 +1,6 @@
 ---
 name: ai-native-workflow
-description: Use to understand the overall way of working in this scaffold — the conversation contract, the task lifecycle, and the principles that keep AI-generated output consistent. The operating manual that ties the other skills together.
+description: Use when the user asks how this scaffold expects you to WORK rather than what to build — the audit-then-edit loop, when to ask instead of guessing, what a confidence score means, or why a proposal is required before editing. Also load it when a session has gone off the rails and you need the process reset.
 ---
 
 # AI-Native Workflow (operating manual)

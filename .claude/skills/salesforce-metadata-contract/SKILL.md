@@ -1,6 +1,6 @@
 ---
 name: salesforce-metadata-contract
-description: Use when generating Zod schemas for Salesforce sObjects, detecting metadata drift an admin caused, pinning the API version, or testing Apex REST / Composite / Platform Event payloads. Salesforce has no OpenAPI — describe is the contract. Tag @contract.
+description: Use when generating Zod schemas for Salesforce sObjects, detecting metadata drift an admin caused, pinning the API version, or testing Apex REST / Composite / Platform Event payloads. Also covers testing a MANAGED PACKAGE — nCino, Vlocity/Industries, Veeva, Conga, FSC or your own — including namespace resolution, package automation firing during arrange, and what is worth asserting about someone else's product. Salesforce has no OpenAPI — describe is the contract. Tag @contract.
 ---
 
 # Salesforce Metadata Contract — describe IS the spec
@@ -146,7 +146,7 @@ Two things that mapping buys you for free:
 
 ## The drift test
 
-`tests/salesforce/metadata-contract.spec.ts`. Two complementary assertions:
+`tests/salesforce/contract/metadata-drift.spec.ts`. Two complementary assertions:
 
 ```ts
 test(
@@ -198,11 +198,63 @@ test('pinned API version is still supported', { tag: '@contract' }, async ({ org
 
 That fails loudly with an actionable message instead of every request 404ing mysteriously.
 
-## Namespaced fields in managed packages
+## Testing a managed package (nCino, Vlocity/Industries, Veeva, Conga, FSC, your own)
 
-A managed-package field is `acme__Widget_Count__c` in one org and may be installed under a different
-namespace elsewhere. Never hardcode the namespace — resolve it, or read the field list from `describe`
-and match on the un-namespaced suffix. This is rule #15 at its sharpest.
+A managed package is **someone else's product installed into your org**. That single fact decides
+what to test and how, and it is the same whether the package is nCino, Vlocity, Veeva, Conga, an
+Industries cloud, Financial Services Cloud, or one your team built.
+
+> FSC has its own skill (`salesforce-fsc`) only because its _data model_ — households, reciprocal
+> roles, `FinServ__` objects — needs naming. Everything in THIS section applies to every package,
+> FSC included. If you are on nCino or Vlocity, this section is your equivalent, and there is no
+> tier-3 skill to go looking for.
+
+### 1. Resolve the namespace; never write it from memory
+
+The same logical field is `acme__Widget__c` in one org and unprefixed in another — depending on
+whether the package is installed or the org **is** the package's developer org. Getting it wrong
+fails as `INVALID_FIELD`, which reads like a typo rather than an environment difference, so people
+"fix" it by guessing another spelling.
+
+Read the field list from `describe` and match on the **un-namespaced suffix**, or resolve the prefix
+once and reuse it. This is Constitution rule #15 at its sharpest: the prefix is org state, not
+source, so there is no repository to read it from. `salesforce-data` covers the arrange-side
+version of this trap.
+
+### 2. Don't test that the package works — test YOUR configuration of it
+
+The vendor tests their own product. What is worth asserting is what your admins did to it: record
+types, page layouts, FLS, validation rules, roll-up and matching configuration, the permission
+model over package objects. The falsifiable tell is the same one the `salesforce` hub uses:
+
+> **If the test would still pass on a vanilla org with the package installed and none of your
+> customisation, delete it.**
+
+### 3. Package automation fires during arrange
+
+Packages ship Flows, triggers and validation rules, and they run even when you arrange as admin.
+So arrange can trip a package validation rule, and it creates **side-effect records you did not
+insert** — register those for teardown too, not just the record you created (`salesforce-data`,
+`salesforce-async`).
+
+### 4. Tear down as admin
+
+A restricted persona typically cannot delete package records, and `deleteRecordQuietly` swallows
+the error — so cleanup as the subject persona fails **silently** and leaks. Teardown belongs to
+`adminOrg`, always.
+
+### 5. A missing derived value may be missing CONFIG, not bad timing
+
+Package roll-ups and computed fields are usually both asynchronous **and** configuration-driven. If
+a value never appears, raising the timeout is the wrong first move: check whether the configuration
+row that produces it exists at all. Poll for it (`salesforce-async`), but treat a permanent absence
+as a config finding rather than a flake.
+
+### 6. Package UIs are often Aura-era
+
+Managed-package screens frequently route through `/aura` rather than `/ui-api`, so the wait you
+would use for a standard Lightning record page may not apply. Confirm which path the screen
+actually uses before writing the wait (`salesforce-waits`).
 
 ## Apex REST endpoints
 

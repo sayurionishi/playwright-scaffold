@@ -1,7 +1,8 @@
 import { test as base } from '@playwright/test';
-import { ApiRequest } from '../api/api-request';
-import { ApiEndpoints } from '../../enums/util/api-endpoints';
-import { makeUser } from '../../test-data/factories/user.factory';
+import { ApiRequest } from '@fixtures/api/api-request';
+import { ApiEndpoints } from '@enums/util/api-endpoints';
+import { makeUser } from '@test-data/factories/user.factory';
+import { UserSchema, type User } from '@fixtures/api/schemas/user.schema';
 
 /**
  * Helper fixtures — manage SETUP/TEARDOWN lifecycle for shared test resources.
@@ -15,7 +16,7 @@ import { makeUser } from '../../test-data/factories/user.factory';
  */
 export interface HelperFixtures {
   /** Creates a user via the API, yields it, deletes it on teardown (runs on failure too). */
-  seededUser: { id: string; email: string };
+  seededUser: User;
 }
 
 export const test = base.extend<HelperFixtures>({
@@ -23,19 +24,32 @@ export const test = base.extend<HelperFixtures>({
     const api = new ApiRequest(request);
     const draft = makeUser();
 
-    // SETUP — create via API (fast, deterministic).
-    const created = await api.post<{ id: string; email: string }>(ApiEndpoints.USERS, {
+    /* SETUP — create via API (fast, deterministic).
+       `schema` and `expectStatus` are both load-bearing, and this fixture had NEITHER:
+
+         const created = await api.post<{ id: string; email: string }>(…, { data: draft });
+         const user = created.data ?? { id: '', email: draft.email };          // ❌
+
+       That type parameter was a fiction — nothing validated the response. Against a 500 or an
+       HTML error page, `created.data` was a string, `user.id` was `undefined`, the teardown
+       branch below silently did nothing, and the consuming test failed much later on something
+       unrelated. The `??` fallback could not even fire, because a `{}` body is not nullish.
+
+       With a schema, a bad response fails HERE, naming the endpoint and the body. That is the
+       whole point of Constitution #7: fail at the boundary, not forty lines downstream. */
+    const { data: user } = await api.post(ApiEndpoints.USERS, {
       data: draft,
+      schema: UserSchema,
+      expectStatus: 201,
     });
-    const user = created.data ?? { id: '', email: draft.email };
 
     await use(user);
 
-    // TEARDOWN — best-effort delete; never mask a test failure.
-    if (user.id) {
-      await api.delete(`${ApiEndpoints.USERS}/${user.id}`).catch(() => {
-        /* best-effort cleanup */
-      });
-    }
+    /* TEARDOWN — best-effort delete; never mask a test failure. No `if (user.id)` guard is
+       needed any more: the schema guarantees `id` is a non-empty uuid, so reaching this line at
+       all means the record exists. */
+    await api.delete(`${ApiEndpoints.USERS}/${user.id}`).catch(() => {
+      /* ignored: cleanup must not overwrite the test's own result */
+    });
   },
 });

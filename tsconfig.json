@@ -23,7 +23,8 @@
       "@helpers/*": ["helpers/*"],
       "@enums/*": ["enums/*"],
       "@config/*": ["config/*"],
-      "@test-data/*": ["test-data/*"]
+      "@test-data/*": ["test-data/*"],
+      "@rules/*": ["rules/*"]
     }
   },
   "include": ["**/*.ts", "**/*.mts", "playwright.config.ts", "eslint.config.mjs"],

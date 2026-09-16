@@ -1,6 +1,8 @@
 import { defineConfig, devices } from '@playwright/test';
 import dotenv from 'dotenv';
 import path from 'node:path';
+import { appConfig } from './config/app.config';
+import { salesforceConfig } from './config/salesforce.config';
 
 /**
  * Environment loading.
@@ -10,8 +12,48 @@ import path from 'node:path';
 const ENVIRONMENT = process.env.ENVIRONMENT ?? 'dev';
 dotenv.config({ path: path.resolve(process.cwd(), `env/.env.${ENVIRONMENT}`) });
 
-const BASE_URL = process.env.BASE_URL ?? 'http://localhost:3000';
-const isCI = !!process.env.CI;
+/**
+ * These are safe to read here even though the imports above are hoisted ABOVE `dotenv.config()`.
+ * Every property on both config objects is a GETTER, so importing the module captures nothing —
+ * the `process.env` read is deferred to first access, and every access below happens inside the
+ * `defineConfig({ … })` literal, which is evaluated after dotenv has loaded the env file.
+ *
+ * Turning any of those getters back into a plain property would silently break this. See the
+ * rationale block in `config/app.config.ts`.
+ */
+const BASE_URL = appConfig.baseUrl;
+const isCI = appConfig.isCI;
+
+/**
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ * THE OVERLAY IS CONDITIONAL, NOT PRUNED
+ *
+ * The Salesforce projects used to be declared unconditionally, and `bootstrap` deleted the files
+ * for non-Salesforce projects. Two problems with that:
+ *
+ *  1. `npm test` runs EVERY project, so on a plain web app it reached `setup:salesforce` and died
+ *     on a missing `SF_CLIENT_ID` — a variable that project had no reason to own. There was no
+ *     green path on a fresh clone.
+ *  2. Pruning is a fork. A pruned clone has diverged from upstream on day one and can never merge
+ *     an improvement back. And the documented prune list omitted `fixtures/test-options.ts`, whose
+ *     Salesforce imports are the only ones in otherwise-generic code — so following the
+ *     instructions produced an unresolved-module error in EVERY spec.
+ *
+ * So the pack is opt-IN at runtime: set `SF_LOGIN_URL` and the Salesforce projects appear; leave it
+ * unset and they do not exist. Nothing to delete, nothing to diverge, and the fixtures stay merged
+ * because Playwright fixtures are LAZY — one that no test destructures never runs.
+ *
+ * Same reasoning for `setup`: an app with no login has nothing to authenticate, and that project
+ * would fail on `TEST_USER_EMAIL` and take `functional`/`e2e` down with it as skipped dependents.
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ */
+const hasSalesforceOrg = (process.env.SF_LOGIN_URL ?? '') !== '';
+const hasLogin = (process.env.TEST_USER_EMAIL ?? '') !== '';
+
+/** UI projects depend on `setup` only when there is a login to perform. */
+const uiDependencies = hasLogin ? ['setup'] : [];
+/** …and only consume stored auth state when that setup actually ran. */
+const uiStorageState = hasLogin ? { storageState: appConfig.storageState } : {};
 
 /**
  * ═══════════════════════════════════════════════════════════════════════════════════════════════
@@ -88,6 +130,12 @@ const TIMEOUTS = {
 
 export default defineConfig({
   testDir: './tests',
+  /**
+   * Org API-limit pre-flight. A silent no-op unless SF_LOGIN_URL is set, so a non-Salesforce
+   * clone is unaffected. See helpers/salesforce/global-setup.ts — `assertApiLimitHeadroom` was
+   * documented as a guarantee in three places but had no callers until this was wired.
+   */
+  globalSetup: './helpers/salesforce/global-setup.ts',
   /* Storage state produced by the auth setup project. */
   fullyParallel: true,
   forbidOnly: isCI,
@@ -140,87 +188,40 @@ export default defineConfig({
       // No browser, so there are no actionability waits to bound — a slow test here means a slow
       // network or a slow backend, and 30s is already a long time for one HTTP call.
       timeout: TIMEOUTS.apiTest,
-      use: { baseURL: process.env.API_URL ?? BASE_URL },
+      use: { baseURL: appConfig.apiUrl },
     },
+
     /**
-     * `org` — the Salesforce CONTRACT layer. No browser, no storageState: the `adminOrg`/`org`/
-     * `orgAs` fixtures mint their own sessions per persona.
+     * `setup` — produces auth storage state for the UI projects.
      *
-     * This is where field types, lengths, picklist values, permission-set grants, object CRUD, and
-     * the per-persona FLS matrix are asserted — dozens of combinations in seconds. The UI layer
-     * then only tests behaviour. See docs/salesforce/TEST-ARCHITECTURE.md.
+     * Present only when `TEST_USER_EMAIL` is set. An app with no login has nothing to
+     * authenticate, and declaring this unconditionally meant a fresh clone failed here and marked
+     * `functional`/`e2e` as SKIPPED rather than run — a green-looking run with no UI coverage.
      *
-     * Fast and dependency-free, so run it on every push. Prune if the profile isn't `salesforce`.
+     * NOTE: `testDir` is set explicitly. `testMatch` resolves relative to `testDir`, which
+     * globally is './tests' — so a bare /.*\.setup\.ts/ pattern could never reach the setup files
+     * that live under `helpers/`.
      */
-    {
-      name: 'org',
-      testDir: './tests/salesforce/contract',
-      // No browser. Each test is a couple of API calls; anything slower is an org problem.
-      timeout: TIMEOUTS.apiTest,
-    },
-    /**
-     * NOTE: `testDir` is set explicitly on the setup projects. `testMatch` resolves relative to
-     * `testDir`, which globally is './tests' — so a bare /.*\.setup\.ts/ pattern could never reach
-     * the setup files that live under `helpers/`.
-     */
-    {
-      name: 'setup',
-      testDir: './helpers/auth',
-      testMatch: /.*\.setup\.ts/,
-      // Login flow + storage-state write. Slower than a normal test, still bounded.
-      timeout: TIMEOUTS.setupTest,
-    },
-    /**
-     * `setup:salesforce` — fans out to produce ONE storageState per persona
-     * (`.auth/sf-<key>.json`). Sessions are minted over the API, never by driving the login form.
-     * See the `salesforce-auth` skill.
-     */
-    {
-      name: 'setup:salesforce',
-      testDir: './helpers/salesforce',
-      testMatch: /personas\.setup\.ts/,
-      // Per persona: JWT mint + browser launch + a Lightning page load. Lightning-sized budget.
-      timeout: TIMEOUTS.salesforceTest,
-      use: { navigationTimeout: TIMEOUTS.salesforceNavigation },
-    },
-    /**
-     * `salesforce` — the Lightning UI/BEHAVIOUR layer.
-     *
-     * Runs as the SUBJECT persona — a restricted user, NOT System Admin. That default is
-     * deliberate: a UI test running as admin exercises a screen no real user sees, and an admin's
-     * Modify All Data bypasses sharing and FLS, hiding the bugs you meant to catch. Records are
-     * arranged and torn down through the `adminOrg` fixture instead.
-     *
-     * Tests needing a different identity use `asPersona` rather than this project's state.
-     */
-    {
-      name: 'salesforce',
-      testDir: './tests/salesforce/ui',
-      /**
-       * Lightning gets more headroom than any other UI project, and that is a fact about the
-       * platform rather than a concession: Aura hydration and the record-page bootstrap are
-       * genuinely slow. Squeezing these to the generic values produces false failures, which
-       * teaches people to ignore timeouts — the opposite of what we want.
-       */
-      timeout: TIMEOUTS.salesforceTest,
-      use: {
-        ...devices['Desktop Chrome'],
-        // Namespaced by ENVIRONMENT (the same constant used above to pick the .env file) so a run
-        // against staging never picks up a session `setup:salesforce` minted for dev, or vice versa.
-        storageState: `.auth/${ENVIRONMENT}/sf-${process.env.SF_DEFAULT_PERSONA ?? 'standardUser'}.json`,
-        actionTimeout: TIMEOUTS.salesforceAction,
-        navigationTimeout: TIMEOUTS.salesforceNavigation,
-      },
-      dependencies: ['setup:salesforce'],
-    },
+    ...(hasLogin
+      ? [
+          {
+            name: 'setup',
+            testDir: './helpers/auth',
+            testMatch: /.*\.setup\.ts/,
+            // Login flow + storage-state write. Slower than a normal test, still bounded.
+            timeout: TIMEOUTS.setupTest,
+          },
+        ]
+      : []),
+
     {
       name: 'functional',
       testDir: './tests/functional',
       use: {
         ...devices['Desktop Chrome'],
-        storageState: process.env.STORAGE_STATE ?? '.auth/user.json',
+        ...uiStorageState,
       },
-      dependencies: ['setup'],
+      dependencies: uiDependencies,
     },
     {
       name: 'e2e',
@@ -233,9 +234,76 @@ export default defineConfig({
       timeout: TIMEOUTS.e2eTest,
       use: {
         ...devices['Desktop Chrome'],
-        storageState: process.env.STORAGE_STATE ?? '.auth/user.json',
+        ...uiStorageState,
       },
-      dependencies: ['setup'],
+      dependencies: uiDependencies,
     },
+
+    /* ═══ THE SALESFORCE OVERLAY — present only when SF_LOGIN_URL is set ═══════════════════════*/
+    ...(hasSalesforceOrg
+      ? [
+          /**
+           * `org` — the Salesforce CONTRACT layer. No browser, no storageState: the
+           * `adminOrg`/`org`/`orgAs` fixtures mint their own sessions per persona.
+           *
+           * This is where field types, lengths, picklist values, permission-set grants, object
+           * CRUD and the per-persona FLS matrix are asserted — dozens of combinations in seconds.
+           * The UI layer then only tests behaviour. See docs/salesforce/TEST-ARCHITECTURE.md.
+           *
+           * Fast and dependency-free, so run it on every push.
+           */
+          {
+            name: 'org',
+            testDir: './tests/salesforce/contract',
+            // No browser. Each test is a couple of API calls; anything slower is an org problem.
+            timeout: TIMEOUTS.apiTest,
+          },
+
+          /**
+           * `setup:salesforce` — fans out to produce ONE storageState per persona
+           * (`.auth/<env>/sf-<key>.json`). Sessions are minted over the API, never by driving the
+           * login form. See the `salesforce-auth` skill.
+           */
+          {
+            name: 'setup:salesforce',
+            testDir: './helpers/salesforce',
+            testMatch: /personas\.setup\.ts/,
+            // Per persona: JWT mint + browser launch + a Lightning page load.
+            timeout: TIMEOUTS.salesforceTest,
+            use: { navigationTimeout: TIMEOUTS.salesforceNavigation },
+          },
+
+          /**
+           * `salesforce` — the Lightning UI/BEHAVIOUR layer.
+           *
+           * Runs as the SUBJECT persona — a restricted user, NOT System Admin. That default is
+           * deliberate: a UI test running as admin exercises a screen no real user sees, and an
+           * admin's Modify All Data bypasses sharing and FLS, hiding the bugs you meant to catch.
+           * Records are arranged and torn down through the `adminOrg` fixture instead.
+           *
+           * Tests needing a different identity use `asPersona` rather than this project's state.
+           */
+          {
+            name: 'salesforce',
+            testDir: './tests/salesforce/ui',
+            /**
+             * Lightning gets more headroom than any other UI project, and that is a fact about
+             * the platform rather than a concession: Aura hydration and the record-page bootstrap
+             * are genuinely slow. Squeezing these to the generic values produces false failures,
+             * which teaches people to ignore timeouts — the opposite of what we want.
+             */
+            timeout: TIMEOUTS.salesforceTest,
+            use: {
+              ...devices['Desktop Chrome'],
+              // Namespaced by ENVIRONMENT so a run against staging never picks up a session
+              // `setup:salesforce` minted for dev, or vice versa.
+              storageState: salesforceConfig.storageStateFor(salesforceConfig.defaultPersona),
+              actionTimeout: TIMEOUTS.salesforceAction,
+              navigationTimeout: TIMEOUTS.salesforceNavigation,
+            },
+            dependencies: ['setup:salesforce'],
+          },
+        ]
+      : []),
   ],
 });

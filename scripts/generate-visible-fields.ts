@@ -23,11 +23,11 @@
 import path from 'node:path';
 import dotenv from 'dotenv';
 import { request as playwrightRequest } from '@playwright/test';
-import { ApiRequest } from '../fixtures/api/api-request';
-import { getOrgSession, authHeaders } from '../helpers/salesforce/auth';
-import { fetchObjectInfo, visibleFieldNames } from '../helpers/salesforce/describe';
-import { ASSERTABLE_PERSONAS } from '../test-data/salesforce/personas';
-import { salesforceConfig } from '../config/salesforce.config';
+import { ApiRequest } from '@fixtures/api/api-request';
+import { getOrgSession, authHeaders } from '@helpers/salesforce/auth';
+import { fetchObjectInfo, visibleFieldNames } from '@helpers/salesforce/describe';
+import { ASSERTABLE_PERSONAS } from '@test-data/salesforce/personas';
+import { salesforceConfig } from '@config/salesforce.config';
 
 const ENVIRONMENT = process.env.ENVIRONMENT ?? 'dev';
 dotenv.config({ path: path.resolve(process.cwd(), `env/.env.${ENVIRONMENT}`) });

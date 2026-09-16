@@ -14,14 +14,14 @@
  */
 
 import { expect } from '@playwright/test';
-import type { DescribeResult } from '../../fixtures/salesforce/schemas/describe.schema';
-import type { ObjectInfo } from '../../fixtures/salesforce/schemas/describe.schema';
+import type { DescribeResult } from '@fixtures/salesforce/schemas/describe.schema';
+import type { ObjectInfo } from '@fixtures/salesforce/schemas/describe.schema';
 import type {
   FieldAccessExpectation,
   FieldContract,
   ObjectContract,
   ObjectCrudExpectation,
-} from '../../test-data/salesforce/contracts/contract-types';
+} from '@test-data/salesforce/contracts/contract-types';
 
 const REGENERATE = 'Run `npm run sf:schemas -- <Object>` and review the diff like code.';
 

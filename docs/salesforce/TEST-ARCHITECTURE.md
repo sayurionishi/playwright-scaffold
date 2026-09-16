@@ -140,17 +140,16 @@ Personas differ from their neighbour along **exactly one** axis, so a failing ma
 which axis broke. A persona differing on three axes at once produces failures you debug rather than
 read.
 
-| Persona           | CRUD            | FLS             | Sharing               | UI     | Purpose  | Isolates                           |
-| ----------------- | --------------- | --------------- | --------------------- | ------ | -------- | ---------------------------------- |
-| `sysAdmin`        | all + ModifyAll | all             | bypasses              | yes    | arrange  | — never asserted                   |
-| `fullAccess`      | CRUD+D          | all fields      | normal                | yes    | control  | grant correctness, no admin bypass |
-| `standardUser`    | CRU, no D       | all fields      | normal                | yes    | subject  | the realistic default              |
-| `limitedFields`   | CRU, no D       | **some hidden** | normal                | yes    | subject  | **FLS**                            |
-| `readOnly`        | **R only**      | all fields      | normal                | yes    | subject  | **CRUD**                           |
-| `noAccess`        | **none**        | none            | normal                | yes    | boundary | **the deny path**                  |
-| `manager`         | CRU             | all             | **above** subordinate | yes    | control  | **sharing** (sees down)            |
-| `subordinate`     | CRU             | all             | **below** manager     | yes    | subject  | **sharing** (can't see up)         |
-| `integrationUser` | CRUD (API)      | all             | normal                | **no** | boundary | **UI axis**                        |
+The nine personas and what each one isolates are defined in **`.claude/skills/salesforce-personas`**
+— that skill is the single owner of the lattice.
+
+The shape in one sentence: each persona differs from its neighbour on **exactly one axis**, so a
+failure names its own cause. `fullAccess` → `limitedFields` differs only in fields, so a failure is
+field-level; `manager` ↔ `subordinate` have identical CRUD and FLS and differ only in position, so a
+failure is sharing. `noAccess` is the hard floor that proves a deny assertion can fail at all.
+
+> This table used to be duplicated here, and the two copies had already drifted — `fullAccess` and
+> `subordinate` described different things in each. That is why it now lives in one place.
 
 Read the pairs:
 

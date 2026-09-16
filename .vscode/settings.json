@@ -1,0 +1,22 @@
+{
+  "search.exclude": {
+    "**/node_modules": true,
+    "playwright-report/**": true,
+    "blob-report/**": true,
+    "all-blob-reports/**": true,
+    "test-results/**": true,
+    ".auth/**": true,
+    "package-lock.json": true
+  },
+  "files.watcherExclude": {
+    "**/playwright-report/**": true,
+    "**/blob-report/**": true,
+    "**/test-results/**": true
+  },
+  "typescript.tsdk": "node_modules/typescript/lib",
+  "editor.codeActionsOnSave": {
+    "source.fixAll.eslint": "explicit"
+  },
+  "editor.defaultFormatter": "esbenp.prettier-vscode",
+  "editor.formatOnSave": true
+}

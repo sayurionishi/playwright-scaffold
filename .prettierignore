@@ -1,0 +1,15 @@
+# Generated test output. Prettier does NOT read .gitignore — it only skips node_modules — so
+# without this file `npm run format` rewrites report HTML/JSON, and `prettier --check .` fails
+# after any local test run. That made formatting effectively unenforceable in CI.
+playwright-report/
+blob-report/
+test-results/
+all-blob-reports/
+.auth/
+
+# Machine-generated, and reformatting it produces a huge meaningless diff.
+package-lock.json
+
+# Generated Salesforce schemas — `scripts/generate-sobject-schemas.ts` already runs its output
+# through this project's Prettier config, so a second pass here is redundant.
+fixtures/salesforce/schemas/generated/

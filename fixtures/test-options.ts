@@ -3,12 +3,13 @@ import { test as apiTest } from './api/api-fixture';
 import { test as pomTest } from './pom/page-object-fixture';
 import { test as helperTest } from './helper/helper-fixture';
 import { test as salesforceOrgTest } from './salesforce/org-fixture';
+import { test as salesforceLightningTest } from './salesforce/lightning-fixture';
 import { test as salesforcePersonaTest } from './salesforce/persona-fixture';
 
 /**
  * THE single import point for every spec file.
  *
- *   import { test, expect } from '../../fixtures/test-options';
+ *   import { test, expect } from '@fixtures/test-options';
  *
  * Never import `test` from '@playwright/test' directly — that bypasses all custom
  * fixtures (api, page objects, helpers). Merge new fixture modules here with mergeTests.
@@ -23,6 +24,7 @@ export const test = mergeTests(
   pomTest,
   helperTest,
   salesforceOrgTest,
+  salesforceLightningTest,
   salesforcePersonaTest,
 );
 export { expect } from '@playwright/test';

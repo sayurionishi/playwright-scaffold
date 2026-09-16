@@ -40,22 +40,36 @@ affected tests, and reports. You stay in the loop at the approval gate.
 
 ## Getting started
 
+Requires **Node 20+** (`.nvmrc` pins it; `engines` warns if you are older). CI uses the same file,
+so it cannot end up testing a version nobody develops on.
+
 ```bash
 # 1. Clone and install
 git clone <your-fork-url> && cd playwright-scaffold
-npm install
-npx playwright install --with-deps
+npm ci                       # `ci` not `install` — respects the lockfile; also installs git hooks
+npm run install:browsers     # playwright install --with-deps
 
 # 2. Configure your environment
 cp env/.env.dev.example env/.env.dev    # fill in BASE_URL / API_URL / creds
 
 # 3. Bootstrap — tailor the scaffold to your app (see below)
-# 4. Run
+
+# 4. Check the scaffold itself is healthy (needs no app, and should be green on a fresh clone)
+npm run typecheck && npm run lint && npm run guard && npm run rules:check
+
+# 5. Run the tests (these DO need a real app at BASE_URL)
 npm run test:api          # backend suite (no browser)
 npm run test:functional   # UI feature tests
 npm run test:e2e          # full journeys
 npm test                  # everything except @destructive
 ```
+
+Step 4 passes with no app configured; step 5 does not, and that is expected — the scaffold ships no
+application to test. The same is true in CI: the test lanes **auto-skip** until you set a `BASE_URL`
+repo variable, so a green check does not by itself mean tests ran. Set the `STRICT_CI` variable to
+`true` once your URL is configured and a silently-skipped lane becomes a failure. Protect the
+`Required checks` job, not the individual lanes — a skipped job otherwise reports success to branch
+protection.
 
 **Step 3 in detail — bootstrap before writing a single test.** Open the repo in Claude Code and say:
 
@@ -93,16 +107,16 @@ Claude: Done. Wrote PROJECT.md (profile: controlled), kept 4 projects, wired aut
         Next: want a page object for your login screen, or the first API suite?
 ```
 
-Based on your answers, it picks a **profile** that tunes the defaults to your target, prunes what
-you don't need, and writes `PROJECT.md`. Every later task reads that file, so the scaffold stops
+Based on your answers, it picks a **profile** that tunes the defaults to your target, activates the
+overlays you need, and writes `PROJECT.md`. Every later task reads that file, so the scaffold stops
 being generic and starts being yours.
 
-| Profile      | What it changes                                                                                                    |
-| ------------ | ------------------------------------------------------------------------------------------------------------------ |
-| `generic`    | Playwright's official locator order (role → label → text → testId). The default.                                   |
-| `controlled` | You can add `data-testid` → testId-first locators. Most stable.                                                    |
-| `salesforce` | Activates the **Salesforce pack** — 6 extra skills plus org auth, personas, and metadata-contract code. See below. |
-| `api-only`   | Prunes the UI projects (and may suggest a backend-native tool instead).                                            |
+| Profile      | What it changes                                                                                                           |
+| ------------ | ------------------------------------------------------------------------------------------------------------------------- |
+| `generic`    | Playwright's official locator order (role → label → placeholder → text → testId). The default.                            |
+| `controlled` | You can add `data-testid` → testId-first locators. Most stable.                                                           |
+| `salesforce` | Activates the **Salesforce pack** — a dedicated skill set plus org auth, personas, and metadata-contract code. See below. |
+| `api-only`   | Leaves the UI projects collecting nothing (and may suggest a backend-native tool instead).                                |
 
 After bootstrap, just describe work in plain language — _"add a page object for the settings page"_,
 _"add API tests for `POST /orders`"_ — and the assistant routes, explores, proposes, and (on
@@ -117,9 +131,10 @@ approval) writes tests that follow the conventions.
 Salesforce isn't "a web app you test" — it's a platform where **your configuration is the system under
 test** and most of the UI is generated. So the `salesforce` profile is more than a locator preference:
 
-**Six extra skills** — `salesforce` (the hub: what to test and, importantly, what _not_ to),
-`salesforce-auth`, `salesforce-locators`, `salesforce-waits`, `salesforce-personas`,
-`salesforce-metadata-contract`, `salesforce-data`.
+**A dedicated skill pack** — `salesforce` (the hub: what to test and, importantly, what _not_ to),
+`salesforce-auth`, `salesforce-locators`, `salesforce-waits`, `salesforce-async`,
+`salesforce-personas`, `salesforce-metadata-contract`, `salesforce-data` — plus `salesforce-fsc`
+as a second-tier overlay, added only for Financial Services Cloud orgs so nobody else pays for it.
 
 **Four things that genuinely differ from every other profile:**
 
@@ -240,18 +255,26 @@ tests/              api/   functional/   e2e/
 ## When _not_ to use this scaffold
 
 Playwright's API mode is the right fit for **API-as-setup** and **modest, same-stack API-as-SUT**
-suites that benefit from sharing types with the UI tests. It is **overkill** for a large, pure-API
-suite — especially when the API is the primary system under test and the backend is **not** TypeScript.
+suites that benefit from sharing types with the UI tests. It is the wrong tool when **the API itself
+is the system under test**.
 
-In that case prefer a backend-native tool:
+In that case use the companion scaffold
+**[`sayurionishi/api-testing-scaffold`](https://github.com/sayurionishi/api-testing-scaffold)** —
+same methodology as this repo (bootstrap skill, `PROJECT.md`, one rule source, Copilot
+instructions), deliberately **not** Playwright, with two tracks:
 
-- **pytest + httpx + Pydantic** (Python)
-- **RestAssured** (Java)
-- **Vitest + Zod** (Node, no browser)
-- **Schemathesis / Dredd** — contract testing straight from OpenAPI
+- **Python** — pytest + httpx + Pydantic v2
+- **TypeScript** — Vitest + native `fetch` + Zod
 
-The `bootstrap` skill's `api-only` path surfaces this guidance too. Load and performance testing
-belongs in **k6** or **Gatling**, not here.
+Other backend-native options if neither track fits: **RestAssured** (Java), or
+**Schemathesis / Dredd** for contract testing straight from OpenAPI.
+
+The line between the two repos is what the API calls are _for_: seeding and cleaning state for UI
+tests → stay here and use the `api` project; the API is the thing under test → go there. The
+`bootstrap` skill's Phase 2 gate and `profiles/api-only.md` enforce the same split.
+
+Load and performance testing belongs in **k6** or **Gatling**, not here. For the full list of what
+this scaffold does and does not fit, see **`docs/TARGET-FIT.md`**.
 
 ---
 

@@ -1,5 +1,5 @@
-import { faker } from '@faker-js/faker';
-import { uniqueName } from '../../../helpers/salesforce/soql';
+import { fakerFor } from '@test-data/faker';
+import { uniqueName } from '@helpers/salesforce/soql';
 
 /**
  * Salesforce record factories — dynamic happy-path drafts (`data-strategy`, `salesforce-data`).
@@ -31,7 +31,7 @@ export interface AccountDraft {
  * @param seed make the call reproducible when a test needs determinism
  */
 export function makeAccount(overrides: Partial<AccountDraft> = {}, seed?: number): AccountDraft {
-  if (seed !== undefined) faker.seed(seed);
+  const faker = fakerFor(seed);
   return {
     Name: uniqueName(faker.company.name()),
     Phone: faker.phone.number(),
@@ -53,7 +53,7 @@ export interface ContactDraft {
 
 /** `LastName` is the only required field on Contact — everything else is optional. */
 export function makeContact(overrides: Partial<ContactDraft> = {}, seed?: number): ContactDraft {
-  if (seed !== undefined) faker.seed(seed);
+  const faker = fakerFor(seed);
   return {
     FirstName: faker.person.firstName(),
     LastName: uniqueName(faker.person.lastName()),
@@ -84,7 +84,7 @@ export function makeOpportunity(
   overrides: Partial<OpportunityDraft> = {},
   seed?: number,
 ): OpportunityDraft {
-  if (seed !== undefined) faker.seed(seed);
+  const faker = fakerFor(seed);
   return {
     Name: uniqueName(`${faker.company.buzzNoun()} deal`),
     StageName: stageName,
@@ -112,12 +112,23 @@ export function futureDateIso(daysFromNow: number): string {
  * `referenceId` binds children to their parent and maps the response back to what you created.
  * See `salesforce-data`.
  */
-export function makeAccountTree(contactCount = 2): { records: unknown[] } {
+export function makeAccountTree(contactCount = 2): {
+  records: unknown[];
+  /**
+   * The Account draft embedded in `records`, returned so a test can assert on what it created.
+   * Without this the generated Name is unrecoverable, which pushes specs toward asserting that the
+   * list-view TABLE rendered instead of that the ROW is present — an assertion that passes on an
+   * empty list.
+   */
+  account: AccountDraft;
+} {
+  const account = makeAccount();
   return {
+    account,
     records: [
       {
         attributes: { type: 'Account', referenceId: 'acct1' },
-        ...makeAccount(),
+        ...account,
         Contacts: {
           records: Array.from({ length: contactCount }, (_unused, index) => ({
             attributes: { type: 'Contact', referenceId: `con${index + 1}` },
